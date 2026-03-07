@@ -4,6 +4,12 @@ use scraper::{Html, Selector};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
+use std::sync::LazyLock;
+
+static EM_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<em>(.*?)</em>").unwrap());
+static SD_DATA_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"SD_COMPONENT_DATA = (\{.*?\});").unwrap());
+static SCRIPT_SELECTOR: LazyLock<Selector> = LazyLock::new(|| Selector::parse("script").unwrap());
 
 // -- Errors --
 
@@ -36,13 +42,34 @@ impl From<reqwest::Error> for SdictError {
 pub struct Term {
     pub query: String,
     pub quick_definition: Option<String>,
-    pub entries: Vec<Entry>,
+    pub headword_groups: Vec<HeadwordGroup>,
     pub examples: Vec<CorpusExample>,
 }
 
 #[derive(Debug, Clone)]
-pub struct Entry {
-    pub definition: String,
+pub struct HeadwordGroup {
+    pub subheadword: String,
+    pub pos_groups: Vec<PosGroup>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PosGroup {
+    pub pos_label: String,
+    pub senses: Vec<Sense>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Sense {
+    pub index: u32,
+    pub context: String,
+    pub regions: Vec<String>,
+    pub register_labels: Vec<String>,
+    pub translations: Vec<Translation>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Translation {
+    pub text: String,
     pub examples: Vec<ExampleSentence>,
 }
 
@@ -69,13 +96,12 @@ pub struct FilterTag {
 /// Extract filter tags from corpus examples by counting the text inside `<em>` tags
 /// in the English translations. Returns tags sorted by count descending.
 pub fn extract_filter_tags(examples: &[CorpusExample]) -> Vec<FilterTag> {
-    let re = Regex::new(r"<em>(.*?)</em>").expect("valid regex");
     let mut counts: HashMap<String, usize> = HashMap::new();
 
     for ex in examples {
         // Collect unique <em> texts per example to avoid double-counting
         let mut seen = std::collections::HashSet::new();
-        for caps in re.captures_iter(&ex.english) {
+        for caps in EM_RE.captures_iter(&ex.english) {
             let text = caps[1].to_lowercase();
             if seen.insert(text.clone()) {
                 *counts.entry(text).or_insert(0) += 1;
@@ -96,11 +122,11 @@ pub fn extract_filter_tags(examples: &[CorpusExample]) -> Vec<FilterTag> {
 /// `<em>{tag}</em>` (case-insensitive).
 pub fn filter_examples(examples: &[CorpusExample], tag: &str) -> Vec<CorpusExample> {
     let tag_lower = tag.to_lowercase();
-    let re = Regex::new(r"<em>(.*?)</em>").expect("valid regex");
     examples
         .iter()
         .filter(|ex| {
-            re.captures_iter(&ex.english)
+            EM_RE
+                .captures_iter(&ex.english)
                 .any(|caps| caps[1].to_lowercase() == tag_lower)
         })
         .cloned()
@@ -129,13 +155,11 @@ pub async fn fetch_page(client: &Client, url: &str) -> Result<String, SdictError
 
 pub fn extract_sd_data(html: &str) -> Result<Value, SdictError> {
     let document = Html::parse_document(html);
-    let selector = Selector::parse("script").expect("valid selector");
-    let re = Regex::new(r"SD_COMPONENT_DATA = (\{.*?\});").expect("valid regex");
 
-    for element in document.select(&selector) {
+    for element in document.select(&SCRIPT_SELECTOR) {
         let text = element.text().collect::<String>();
         if text.contains("SD_COMPONENT_DATA")
-            && let Some(caps) = re.captures(&text)
+            && let Some(caps) = SD_DATA_RE.captures(&text)
         {
             let json_str = &caps[1];
             let value: Value = serde_json::from_str(json_str)
@@ -152,47 +176,75 @@ pub fn extract_sd_data(html: &str) -> Result<Value, SdictError> {
 
 // -- Definition parsing --
 
-pub fn parse_definitions(data: &Value) -> (Option<String>, Vec<Entry>) {
+fn extract_string_array(value: &Value, key: &str) -> Vec<String> {
+    value
+        .get(key)
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+pub fn parse_definitions(data: &Value) -> (Option<String>, Vec<HeadwordGroup>) {
     let neodict = data
         .pointer("/sdDictionaryResultsProps/entry/neodict")
         .and_then(|v| v.as_array());
 
-    let mut entries = Vec::new();
+    let mut headword_groups = Vec::new();
 
     if let Some(items) = neodict {
         for item in items {
-            let pos_groups = item.get("posGroups").and_then(|v| v.as_array());
+            let subheadword = item
+                .get("subheadword")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
 
-            if let Some(groups) = pos_groups {
+            let mut pos_groups = Vec::new();
+
+            if let Some(groups) = item.get("posGroups").and_then(|v| v.as_array()) {
                 for group in groups {
-                    let senses = group.get("senses").and_then(|v| v.as_array());
-                    if let Some(senses) = senses {
-                        for sense in senses {
-                            let context = sense
+                    let pos_label = group
+                        .pointer("/pos/nameEn")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+
+                    let mut senses = Vec::new();
+
+                    if let Some(sense_array) = group.get("senses").and_then(|v| v.as_array()) {
+                        for sense_val in sense_array {
+                            let index =
+                                sense_val.get("idx").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+
+                            let context = sense_val
                                 .get("contextEn")
                                 .and_then(|v| v.as_str())
-                                .unwrap_or("");
+                                .unwrap_or("")
+                                .to_string();
 
-                            let translations = sense.get("translations").and_then(|v| v.as_array());
-                            if let Some(translations) = translations {
-                                for translation in translations {
-                                    let def_text = translation
+                            let regions = extract_string_array(sense_val, "regionsDisplay");
+                            let register_labels =
+                                extract_string_array(sense_val, "registerLabelsDisplay");
+
+                            let mut translations = Vec::new();
+
+                            if let Some(trans_array) =
+                                sense_val.get("translations").and_then(|v| v.as_array())
+                            {
+                                for trans_val in trans_array {
+                                    let text = trans_val
                                         .get("translation")
                                         .and_then(|v| v.as_str())
-                                        .unwrap_or("");
-
-                                    let full_definition =
-                                        if !context.is_empty() && !def_text.is_empty() {
-                                            format!("{def_text} ({context})")
-                                        } else if !def_text.is_empty() {
-                                            def_text.to_string()
-                                        } else {
-                                            context.to_string()
-                                        };
+                                        .unwrap_or("")
+                                        .to_string();
 
                                     let mut examples = Vec::new();
                                     if let Some(ex_array) =
-                                        translation.get("examples").and_then(|v| v.as_array())
+                                        trans_val.get("examples").and_then(|v| v.as_array())
                                     {
                                         for ex in ex_array {
                                             let spanish = ex
@@ -211,17 +263,35 @@ pub fn parse_definitions(data: &Value) -> (Option<String>, Vec<Entry>) {
                                         }
                                     }
 
-                                    if !full_definition.is_empty() || !examples.is_empty() {
-                                        entries.push(Entry {
-                                            definition: full_definition,
-                                            examples,
-                                        });
+                                    if !text.is_empty() || !examples.is_empty() {
+                                        translations.push(Translation { text, examples });
                                     }
                                 }
                             }
+
+                            if !translations.is_empty() {
+                                senses.push(Sense {
+                                    index,
+                                    context,
+                                    regions,
+                                    register_labels,
+                                    translations,
+                                });
+                            }
                         }
                     }
+
+                    if !senses.is_empty() {
+                        pos_groups.push(PosGroup { pos_label, senses });
+                    }
                 }
+            }
+
+            if !pos_groups.is_empty() {
+                headword_groups.push(HeadwordGroup {
+                    subheadword,
+                    pos_groups,
+                });
             }
         }
     }
@@ -230,9 +300,16 @@ pub fn parse_definitions(data: &Value) -> (Option<String>, Vec<Entry>) {
         .pointer("/resultCardHeaderProps/headwordAndQuickdefsProps/quickdef1/displayText")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string())
-        .or_else(|| entries.first().map(|e| e.definition.clone()));
+        .or_else(|| {
+            headword_groups
+                .first()
+                .and_then(|hw| hw.pos_groups.first())
+                .and_then(|pg| pg.senses.first())
+                .and_then(|s| s.translations.first())
+                .map(|t| t.text.clone())
+        });
 
-    (quick_definition, entries)
+    (quick_definition, headword_groups)
 }
 
 // -- Examples section parsing --
@@ -273,9 +350,9 @@ pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Te
     let url = format!("{base_url}/translate/{term}");
     let html = fetch_page(client, &url).await?;
     let data = extract_sd_data(&html)?;
-    let (quick_definition, entries) = parse_definitions(&data);
+    let (quick_definition, headword_groups) = parse_definitions(&data);
 
-    if entries.is_empty() {
+    if headword_groups.is_empty() {
         return Err(SdictError::NotFound(term.to_string()));
     }
 
@@ -297,7 +374,7 @@ pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Te
 
     tracing::debug!(
         term = %term,
-        definitions = entries.len(),
+        headword_groups = headword_groups.len(),
         examples = examples.len(),
         "lookup complete"
     );
@@ -305,7 +382,7 @@ pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Te
     Ok(Term {
         query: term.to_string(),
         quick_definition,
-        entries,
+        headword_groups,
         examples,
     })
 }

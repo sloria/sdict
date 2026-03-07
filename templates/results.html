@@ -1,8 +1,8 @@
 {% extends "base.html" %} {% block title %}{{ term.query }} - sdict{% endblock
 %} {% block content %}
 <a href="/" class="site-name">sdict</a>
-<form class="search-form" action="/search" method="post">
-  <input type="text" name="term" value="{{ term.query }}" autofocus />
+<form class="search-form search-form--small" action="/search" method="post">
+  <input type="text" name="term" value="{{ term.query }}" aria-label="Search for a Spanish or English word" />
   <button type="submit">Look up</button>
 </form>
 
@@ -12,29 +12,58 @@
 
 {% if let Some(qd) = term.quick_definition %}
 <p class="quick-def">{{ qd }}</p>
-{% endif %} {% for entry in term.entries %}
-<div class="entry">
-  <div class="definition">{{ entry.definition }}</div>
-  {% for ex in entry.examples %}
-  <div class="example">
-    <div class="es">{{ ex.spanish }}</div>
-    <div class="en">{{ ex.english }}</div>
+{% endif %} {% for hw in term.headword_groups %}
+{% if term.headword_groups.len() > 1 %}
+<h2 class="subheadword">{{ hw.subheadword }}</h2>
+{% endif %}
+{% for pg in hw.pos_groups %}
+<div class="pos-group">
+  <div class="pos-label">{{ pg.pos_label }}</div>
+  {% for sense in pg.senses %}
+  <div class="sense">
+    <div class="sense-header">
+      <span class="sense-number">{{ sense.index }}.</span>
+      {% if !sense.context.is_empty() %}
+      <span class="sense-context">({{ sense.context }})</span>
+      {% endif %}
+      {% for region in sense.regions %}
+      <span class="region-label">({{ region }})</span>
+      {% endfor %}
+      {% for reg in sense.register_labels %}
+      <span class="register-label">({{ reg }})</span>
+      {% endfor %}
+    </div>
+    {% for tr in sense.translations %}
+    <div class="translation">
+      {% if sense.translations.len() > 1 %}
+      <span class="translation-letter">{{ crate::translation_letter(loop.index0) }}.</span>
+      {% endif %}
+      {{ tr.text }}
+    </div>
+    {% for ex in tr.examples %}
+    <div class="example">
+      <div class="es" lang="es">{{ ex.spanish }}</div>
+      <div class="en">{{ ex.english }}</div>
+    </div>
+    {% endfor %}
+    {% endfor %}
   </div>
   {% endfor %}
 </div>
+{% endfor %}
 {% endfor %} {% if !term.examples.is_empty() %}
-<div class="examples-section">
+<div class="examples-section" id="examples">
   <h2>Examples</h2>
   {% if !filter_tags.is_empty() %}
   <div class="filter-tags">
     <a
-      href="/translate/{{ term.query }}"
+      href="/translate/{{ term.query }}#examples"
       class="filter-tag{% if active_filter.is_none() %} active{% endif %}"
       >all</a
     >
     {% for tag in filter_tags %}
     <a
-      href="/translate/{{ term.query }}?filter={{ tag.label|urlencode }}"
+      href="/translate/{{ term.query }}?filter={{ tag.label|urlencode }}#examples"
       class="filter-tag{% if active_filter.as_deref() == Some(tag.label.as_str()) %} active{% endif %}"
       >{{ tag.label }} ({{ tag.count }})</a
     >
@@ -42,7 +71,7 @@
   </div>
   {% endif %} {% for ex in filtered_examples %}
   <div class="corpus-example">
-    <div class="es">{{ ex.spanish|safe }}</div>
+    <div class="es" lang="es">{{ ex.spanish|safe }}</div>
     <div class="en">{{ ex.english|safe }}</div>
   </div>
   {% endfor %}

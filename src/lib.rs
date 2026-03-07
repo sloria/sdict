@@ -9,10 +9,15 @@ use axum::{
     response::{IntoResponse, Redirect},
     routing::{get, post},
 };
-use tower_http::trace::TraceLayer;
 use reqwest::Client;
 use serde::Deserialize;
 use std::sync::Arc;
+use tower_http::trace::TraceLayer;
+
+pub(crate) fn translation_letter(index: &usize) -> char {
+    let clamped = (*index).min(25);
+    (b'a' + clamped as u8) as char
+}
 
 pub struct AppState {
     pub client: Client,

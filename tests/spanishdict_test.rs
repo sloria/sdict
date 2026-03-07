@@ -5,6 +5,14 @@ fn load_fixture(name: &str) -> String {
     std::fs::read_to_string(format!("tests/fixtures/{name}")).expect("fixture file exists")
 }
 
+fn all_translations(groups: &[HeadwordGroup]) -> impl Iterator<Item = &Translation> {
+    groups
+        .iter()
+        .flat_map(|hw| &hw.pos_groups)
+        .flat_map(|pg| &pg.senses)
+        .flat_map(|s| &s.translations)
+}
+
 #[test]
 fn test_extract_sd_data_valid_html() {
     let html = load_fixture("comer.html");
@@ -43,20 +51,30 @@ fn test_extract_sd_data_malformed_json() {
 fn test_parse_definitions_from_fixture() {
     let html = load_fixture("comer.html");
     let data = extract_sd_data(&html).unwrap();
-    let (quick_def, entries) = parse_definitions(&data);
+    let (quick_def, headword_groups) = parse_definitions(&data);
 
     assert!(quick_def.is_some());
-    assert!(!entries.is_empty());
+    assert!(!headword_groups.is_empty());
 
-    // "comer" should have "to eat" as a definition
-    let has_to_eat = entries
-        .iter()
-        .any(|e| e.definition.to_lowercase().contains("to eat"));
+    // "comer" should have "to eat" as a translation
+    let has_to_eat =
+        all_translations(&headword_groups).any(|t| t.text.to_lowercase().contains("to eat"));
     assert!(has_to_eat, "Expected 'to eat' in definitions");
 
     // Should have some examples
-    let total_examples: usize = entries.iter().map(|e| e.examples.len()).sum();
+    let total_examples: usize = all_translations(&headword_groups)
+        .map(|t| t.examples.len())
+        .sum();
     assert!(total_examples > 0, "Expected at least one example sentence");
+
+    // Should have POS labels
+    let first_pos = &headword_groups[0].pos_groups[0].pos_label;
+    assert!(!first_pos.is_empty(), "Expected POS label");
+
+    // Senses should have indices
+    let first_sense = &headword_groups[0].pos_groups[0].senses[0];
+    // Sense index should exist (u32, so always >= 0)
+    let _ = first_sense.index;
 }
 
 #[test]
@@ -68,9 +86,9 @@ fn test_parse_definitions_empty_neodict() {
             }
         }
     });
-    let (quick_def, entries) = parse_definitions(&data);
+    let (quick_def, headword_groups) = parse_definitions(&data);
     assert!(quick_def.is_none());
-    assert!(entries.is_empty());
+    assert!(headword_groups.is_empty());
 }
 
 #[test]
@@ -90,10 +108,11 @@ fn test_parse_definitions_missing_fields() {
             }
         }
     });
-    let (_, entries) = parse_definitions(&data);
-    assert_eq!(entries.len(), 1);
-    assert_eq!(entries[0].definition, "to eat");
-    assert!(entries[0].examples.is_empty());
+    let (_, headword_groups) = parse_definitions(&data);
+    assert_eq!(headword_groups.len(), 1);
+    let translation = &headword_groups[0].pos_groups[0].senses[0].translations[0];
+    assert_eq!(translation.text, "to eat");
+    assert!(translation.examples.is_empty());
 }
 
 #[test]
@@ -118,12 +137,15 @@ fn test_parse_definitions_with_context() {
             }
         }
     });
-    let (_, entries) = parse_definitions(&data);
-    assert_eq!(entries.len(), 1);
-    assert_eq!(entries[0].definition, "to eat (food)");
-    assert_eq!(entries[0].examples.len(), 1);
-    assert_eq!(entries[0].examples[0].spanish, "Vamos a comer.");
-    assert_eq!(entries[0].examples[0].english, "Let's eat.");
+    let (_, headword_groups) = parse_definitions(&data);
+    assert_eq!(headword_groups.len(), 1);
+    let sense = &headword_groups[0].pos_groups[0].senses[0];
+    assert_eq!(sense.context, "food");
+    let translation = &sense.translations[0];
+    assert_eq!(translation.text, "to eat");
+    assert_eq!(translation.examples.len(), 1);
+    assert_eq!(translation.examples[0].spanish, "Vamos a comer.");
+    assert_eq!(translation.examples[0].english, "Let's eat.");
 }
 
 #[test]
@@ -243,7 +265,7 @@ async fn test_translate_with_wiremock() {
 
     assert_eq!(term.query, "comer");
     assert!(term.quick_definition.is_some());
-    assert!(!term.entries.is_empty());
+    assert!(!term.headword_groups.is_empty());
     assert!(!term.examples.is_empty());
 }
 
@@ -290,9 +312,11 @@ async fn test_translate_term_with_accent() {
         .await;
 
     let client = Client::new();
-    let result = translate(&client, &mock_server.uri(), "común").await.unwrap();
+    let result = translate(&client, &mock_server.uri(), "común")
+        .await
+        .unwrap();
     assert_eq!(result.query, "común");
-    assert!(result.entries.iter().any(|e| e.definition == "common"));
+    assert!(all_translations(&result.headword_groups).any(|t| t.text == "common"));
 }
 
 #[tokio::test]
@@ -321,10 +345,7 @@ async fn test_translate_term_with_spaces() {
         .await
         .unwrap();
     assert_eq!(result.query, "buenos días");
-    assert!(result
-        .entries
-        .iter()
-        .any(|e| e.definition == "good morning"));
+    assert!(all_translations(&result.headword_groups).any(|t| t.text == "good morning"));
 }
 
 #[tokio::test]
