@@ -2,6 +2,7 @@ pub mod spanishdict;
 
 use askama::Template;
 use askama_web::WebTemplate;
+use axum::http::HeaderValue;
 use axum::{
     Router,
     extract::{Form, Path, Query, State},
@@ -11,7 +12,6 @@ use axum::{
 };
 use reqwest::Client;
 use serde::Deserialize;
-use axum::http::HeaderValue;
 use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;

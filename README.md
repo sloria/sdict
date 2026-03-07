@@ -23,6 +23,13 @@ services:
 docker compose up
 ```
 
+## Environment variables
+
+- `PORT` — Port to listen on (default: `3000`)
+- `RUST_LOG` — Log level filter (default: `info`)
+- `SENTRY_DSN` — Sentry or GlitchTip DSN. If unset, error tracking is disabled
+- `SENTRY_ENV` — Sentry environment, e.g. `production`, `staging`
+
 ## Development
 
 ```bash
