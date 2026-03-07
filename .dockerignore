@@ -1,0 +1,5 @@
+target/
+.git/
+tests/
+spec.md
+plan.md

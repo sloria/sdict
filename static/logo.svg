@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c0392b"/>
+      <stop offset="100%" stop-color="#e74c3c"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="96" ry="96" fill="url(#bg)"/>
+  <!-- Open book shape -->
+  <g transform="translate(256,290)" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Left page -->
+    <path d="M-8,-80 C-8,-80 -40,-100 -100,-100 C-140,-100 -160,-90 -160,-90 L-160,80 C-160,80 -140,70 -100,70 C-40,70 -8,90 -8,90 Z" fill="rgba(255,255,255,0.15)"/>
+    <!-- Right page -->
+    <path d="M8,-80 C8,-80 40,-100 100,-100 C140,-100 160,-90 160,-90 L160,80 C160,80 140,70 100,70 C40,70 8,90 8,90 Z" fill="rgba(255,255,255,0.15)"/>
+    <!-- Spine -->
+    <line x1="0" y1="-80" x2="0" y2="90"/>
+    <!-- Text lines on left page -->
+    <line x1="-130" y1="-55" x2="-40" y2="-55" stroke-width="8" opacity="0.6"/>
+    <line x1="-130" y1="-30" x2="-55" y2="-30" stroke-width="8" opacity="0.6"/>
+    <line x1="-130" y1="-5" x2="-45" y2="-5" stroke-width="8" opacity="0.6"/>
+    <line x1="-130" y1="20" x2="-60" y2="20" stroke-width="8" opacity="0.6"/>
+    <!-- Text lines on right page -->
+    <line x1="40" y1="-55" x2="130" y2="-55" stroke-width="8" opacity="0.6"/>
+    <line x1="55" y1="-30" x2="130" y2="-30" stroke-width="8" opacity="0.6"/>
+    <line x1="45" y1="-5" x2="130" y2="-5" stroke-width="8" opacity="0.6"/>
+    <line x1="60" y1="20" x2="130" y2="20" stroke-width="8" opacity="0.6"/>
+  </g>
+  <!-- "sd" text -->
+  <text x="256" y="155" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="bold" font-size="110" fill="#fff" letter-spacing="-2">sd</text>
+</svg>

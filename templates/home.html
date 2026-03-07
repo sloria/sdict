@@ -1,0 +1,16 @@
+{% extends "base.html" %} {% block content %}
+<div class="home">
+  <h1>sdict</h1>
+  <p class="tagline">Spanish&#8211;English dictionary</p>
+  <form class="search-form" action="/search" method="post">
+    <input
+      type="text"
+      name="term"
+      placeholder="Spanish or English word or phrase…"
+      aria-label="Search for a Spanish or English word"
+      autofocus
+    />
+    <button type="submit">Look up</button>
+  </form>
+</div>
+{% endblock %}
