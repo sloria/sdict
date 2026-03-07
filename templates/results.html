@@ -36,7 +36,7 @@
     {% for tr in sense.translations %}
     <div class="translation">
       {% if sense.translations.len() > 1 %}
-      <span class="translation-letter">{{ crate::translation_letter(loop.index0) }}.</span>
+      <span class="translation-letter">{{ loop.index0|index_to_letter }}.</span>
       {% endif %}
       {{ tr.text }}
     </div>
