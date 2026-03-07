@@ -1,0 +1,87 @@
+{% extends "base.html" %} {% block title %}{{ term.query }} - sdict{% endblock
+%} {% block content %}
+<a href="/" class="site-name">sdict</a>
+<form class="search-form cluster" data-size="small" action="/search" method="post">
+  <input type="text" name="term" value="{{ term.query }}" aria-label="Search for a Spanish or English word" />
+  <button type="submit">Look up</button>
+</form>
+
+<div class="results-header">
+  <h1>{{ term.headword }}</h1>
+</div>
+
+{% if let Some(qd) = term.quick_definition %}
+<p class="quick-def color-secondary">{{ qd }}</p>
+{% endif %} {% for hw in term.headword_groups %}
+{% if term.headword_groups.len() > 1 %}
+<h2 class="subheadword">{{ hw.subheadword }}</h2>
+{% endif %}
+{% for pg in hw.pos_groups %}
+<div class="pos-group">
+  <div class="uppercase-label color-faint">{{ pg.pos_label }}</div>
+  {% for sense in pg.senses %}
+  <div class="sense">
+    <div class="sense-header">
+      <span class="font-semibold">{{ sense.index }}.</span>
+      <span class="color-green"> 
+        {% if !sense.context.is_empty() %}
+        <span >({{ sense.context }})</span>
+        {% endif %}
+        {% for region in sense.regions %}
+        <span class="text-xs italic">({{ region }})</span>
+        {% endfor %}
+        {% for reg in sense.register_labels %}
+        <span class="text-xs italic">({{ reg }})</span>
+        {% endfor %}
+      </span>
+    </div>
+    {% for tr in sense.translations %}
+    <div class="translation indent font-semibold">
+      {% if sense.translations.len() > 1 %}
+      <span class="color-secondary" style="font-weight: 400">{{ loop.index0|index_to_letter }}.</span>
+      {% endif %}
+      {{ tr.text }}
+    </div>
+    {% for ex in tr.examples %}
+    <div class="example indent text-s">
+      <div class="italic" lang="es">{{ ex.spanish }}</div>
+      <div class="color-secondary">{{ ex.english }}</div>
+    </div>
+    {% endfor %}
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+{% endfor %} {% if !term.examples.is_empty() %}
+<div class="examples-section" id="examples">
+  <h2>Examples</h2>
+  {% if !filter_tags.is_empty() %}
+  <div class="filter-tags cluster">
+    <a
+      href="/translate/{{ term.query }}#examples"
+      class="filter-tag"
+      {% if active_filter.is_none() %}data-state="active"{% endif %}
+      >all</a
+    >
+    {% for tag in filter_tags %}
+    <a
+      href="/translate/{{ term.query }}?filter={{ tag.label|urlencode }}#examples"
+      class="filter-tag"
+      {% if active_filter.as_deref() == Some(tag.label.as_str()) %}data-state="active"{% endif %}
+      >{{ tag.label }} ({{ tag.count }})</a
+    >
+    {% endfor %}
+  </div>
+  {% endif %}
+  {# Corpus examples use |safe because they contain <em> tags for highlighting
+     the search term. The HTML is sanitized at parse time (via ammonia) to only
+     allow <em> tags; all other HTML is stripped. #}
+  {% for ex in filtered_examples %}
+  <div class="corpus-example text-s">
+    <div lang="es">{{ ex.spanish|safe }}</div>
+    <div class="color-secondary">{{ ex.english|safe }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %} {% endblock %}

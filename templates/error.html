@@ -1,0 +1,10 @@
+{% extends "base.html" %} {% block title %}Error - sdict{% endblock %} {% block
+content %}
+<a href="/" class="site-name">sdict</a>
+<form class="search-form cluster" data-size="small" action="/search" method="post">
+  <input type="text" name="term" value="{{ query }}" aria-label="Search for a Spanish or English word" autofocus />
+  <button type="submit">Look up</button>
+</form>
+
+<div class="error-message color-secondary">{{ message }}</div>
+{% endblock %}

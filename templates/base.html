@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}sdict{% endblock %}</title>
+    <link rel="icon" href="/static/favicon.ico" sizes="any" />
+    <link rel="icon" href="/static/logo.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png" />
+    <link rel="manifest" href="/static/site.webmanifest" />
+    <style>
+      /* https://cube.fyi */
+
+      :root {
+        --text: #1a1a1a;
+        --text-secondary: #555;
+        --text-faint: #767676;
+        --bg: #fafaf8;
+        --bg-input: #fff;
+        --accent: #2c5282;
+        --accent-hover: #1a365d;
+        --accent-light: #ebf4ff;
+        --border: #ccc;
+        --border-light: #eee;
+        --green: #276d3d;
+        --btn: #2c5282;
+        --btn-hover: #1a365d;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --text: #e2e2e2;
+          --text-secondary: #999;
+          --text-faint: #8a8a8a;
+          --bg: #1a1a1a;
+          --bg-input: #2a2a2a;
+          --accent: #7db4f0;
+          --accent-hover: #a0ccf5;
+          --accent-light: #2a3a4a;
+          --border: #444;
+          --border-light: #333;
+          --green: #6ec98b;
+          --btn: #3b6ba5;
+          --btn-hover: #5a9bd5;
+        }
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          Charter, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+          serif;
+        font-size: 18px;
+        line-height: 1.6;
+        color: var(--text);
+        background: var(--bg);
+        padding: 2rem 1rem;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      footer {
+        margin-top: 3rem;
+        padding: 1rem;
+        text-align: center;
+        font-size: 0.8rem;
+        color: var(--text-faint);
+      }
+
+      /* === Compositions === */
+
+      .wrapper {
+        max-width: 620px;
+        margin: 0 auto;
+        flex: 1;
+        width: 100%;
+      }
+      .flow > * + * {
+        margin-top: var(--flow-space, 1em);
+      }
+      .cluster {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--cluster-gap, 0.5rem);
+        align-items: center;
+      }
+
+      /* === Utilities === */
+
+      .text-center {
+        text-align: center;
+      }
+      .color-secondary {
+        color: var(--text-secondary);
+      }
+      .color-faint {
+        color: var(--text-faint);
+      }
+      .color-green {
+        color: var(--green);
+      }
+      .text-s {
+        font-size: 0.95rem;
+      }
+      .text-xs {
+        font-size: 0.85rem;
+      }
+      .text-2xs {
+        font-size: 0.75rem;
+      }
+      .italic {
+        font-style: italic;
+      }
+      .font-semibold {
+        font-weight: 600;
+      }
+      .uppercase-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .indent {
+        margin-left: 1.25rem;
+      }
+
+      /* === Blocks === */
+
+      .search-form {
+        margin-bottom: 1rem;
+      }
+      .search-form input[type="text"] {
+        flex: 1;
+        font-family: inherit;
+        font-size: 1rem;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: var(--bg-input);
+        color: var(--text);
+      }
+      .search-form input[type="text"]:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px var(--accent-light);
+      }
+      .search-form button {
+        font-family: inherit;
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+        background: var(--btn);
+        color: #fff;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .search-form button:hover {
+        background: var(--btn-hover);
+      }
+      .search-form button:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--accent-light);
+      }
+
+      .hero {
+        padding-top: min(20vh, 150px);
+      }
+      .hero h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.25rem;
+        font-weight: 400;
+        letter-spacing: 0.05em;
+      }
+      .hero .tagline {
+        margin-bottom: 1.5rem;
+      }
+      .hero .search-form {
+        justify-content: center;
+        max-width: 480px;
+        margin: 0 auto;
+      }
+
+      .results-header {
+        margin-bottom: 0;
+      }
+      .results-header h1 {
+        font-size: 1.8rem;
+        font-weight: 400;
+        margin-bottom: 0;
+      }
+
+      .quick-def {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+      }
+
+      .subheadword {
+        font-size: 1.4rem;
+        font-weight: 400;
+        margin-top: 2rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .pos-group {
+        margin-bottom: 1.5rem;
+      }
+
+      .sense {
+        margin-bottom: 1rem;
+      }
+      .sense-header {
+        margin-bottom: 0.25rem;
+      }
+      .translation {
+        margin-bottom: 0.25rem;
+      }
+      .example {
+        margin-bottom: 0.5rem;
+      }
+
+      .examples-section {
+        margin-top: 2.5rem;
+        border-top: 1px solid var(--border-light);
+        padding-top: 1.5rem;
+      }
+      .examples-section h2 {
+        font-size: 1.3rem;
+        font-weight: 400;
+        margin-bottom: 1rem;
+      }
+
+      .corpus-example {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border-light);
+      }
+      .corpus-example em {
+        font-style: normal;
+        font-weight: 600;
+      }
+      @media (max-width: 500px) {
+        .corpus-example {
+          grid-template-columns: 1fr;
+          gap: 0.25rem;
+        }
+      }
+
+      .filter-tags {
+        --cluster-gap: 0.4rem;
+        margin-bottom: 1rem;
+      }
+
+      .filter-tag {
+        display: inline-block;
+        padding: 0.25rem 0.7rem;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .filter-tag:hover {
+        background: var(--accent-light);
+        text-decoration: none;
+      }
+
+      .site-name {
+        display: block;
+        font-size: 1rem;
+        font-weight: 400;
+        letter-spacing: 0.05em;
+        color: var(--text-faint);
+        margin-bottom: 0.5rem;
+      }
+      .site-name:hover {
+        color: var(--text);
+        text-decoration: none;
+      }
+
+      .error-message {
+        padding: 1rem 0;
+        margin-bottom: 1.5rem;
+      }
+
+      /* === Exceptions === */
+
+      .filter-tag[data-state="active"] {
+        background: var(--btn);
+        color: #fff;
+        border-color: var(--btn);
+      }
+      .search-form[data-size="small"] input[type="text"] {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.65rem;
+      }
+      .search-form[data-size="small"] button {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">{% block content %}{% endblock %}</div>
+    <footer>
+      Powered by <a href="https://www.spanishdict.com">SpanishDict</a>
+    </footer>
+  </body>
+</html>
