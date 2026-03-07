@@ -11,7 +11,9 @@ use axum::{
 };
 use reqwest::Client;
 use serde::Deserialize;
+use axum::http::HeaderValue;
 use tower_http::services::ServeDir;
+use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 
 pub(crate) fn translation_letter(index: &usize) -> char {
@@ -102,7 +104,7 @@ async fn translate(
                 StatusCode::OK,
                 ErrorTemplate {
                     query: term.clone(),
-                    message: format!("Could not look up this term. Please try again. ({e})"),
+                    message: "Could not look up this term. Please try again.".to_string(),
                 },
             )
                 .into_response()
@@ -116,6 +118,22 @@ pub fn build_router(state: AppState) -> Router {
         .route("/search", post(search))
         .route("/translate/{term}", get(translate))
         .nest_service("/static", ServeDir::new("static"))
+        .layer(SetResponseHeaderLayer::overriding(
+            axum::http::header::X_CONTENT_TYPE_OPTIONS,
+            HeaderValue::from_static("nosniff"),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+            axum::http::header::X_FRAME_OPTIONS,
+            HeaderValue::from_static("DENY"),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+            axum::http::header::CONTENT_SECURITY_POLICY,
+            HeaderValue::from_static("default-src 'self'; style-src 'unsafe-inline' 'self'"),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+            axum::http::header::REFERRER_POLICY,
+            HeaderValue::from_static("strict-origin-when-cross-origin"),
+        ))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
 }
