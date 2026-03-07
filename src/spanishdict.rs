@@ -41,6 +41,7 @@ impl From<reqwest::Error> for SdictError {
 #[derive(Debug, Clone)]
 pub struct Term {
     pub query: String,
+    pub headword: String,
     pub quick_definition: Option<String>,
     pub headword_groups: Vec<HeadwordGroup>,
     pub examples: Vec<CorpusExample>,
@@ -202,7 +203,7 @@ fn extract_string_array(value: &Value, key: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
-pub fn parse_definitions(data: &Value) -> (Option<String>, Vec<HeadwordGroup>) {
+pub fn parse_definitions(data: &Value) -> (Option<String>, Option<String>, Vec<HeadwordGroup>) {
     let neodict = data
         .pointer("/sdDictionaryResultsProps/entry/neodict")
         .and_then(|v| v.as_array());
@@ -323,7 +324,12 @@ pub fn parse_definitions(data: &Value) -> (Option<String>, Vec<HeadwordGroup>) {
                 .map(|t| t.text.clone())
         });
 
-    (quick_definition, headword_groups)
+    let headword = data
+        .pointer("/resultCardHeaderProps/headwordAndQuickdefsProps/headword/displayText")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    (quick_definition, headword, headword_groups)
 }
 
 // -- Examples section parsing --
@@ -367,8 +373,7 @@ pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Te
     let url = format!("{base_url}/translate/{term}");
     let html = fetch_page(client, &url).await?;
     let data = extract_sd_data(&html)?;
-    let (quick_definition, headword_groups) = parse_definitions(&data);
-
+    let (quick_definition, headword, headword_groups) = parse_definitions(&data);
     if headword_groups.is_empty() {
         return Err(SdictError::NotFound(term.to_string()));
     }
@@ -398,6 +403,7 @@ pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Te
 
     Ok(Term {
         query: term.to_string(),
+        headword: headword.unwrap_or_else(|| term.to_string()),
         quick_definition,
         headword_groups,
         examples,

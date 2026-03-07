@@ -51,9 +51,10 @@ fn test_extract_sd_data_malformed_json() {
 fn test_parse_definitions_from_fixture() {
     let html = load_fixture("comer.html");
     let data = extract_sd_data(&html).unwrap();
-    let (quick_def, headword_groups) = parse_definitions(&data);
+    let (quick_def, headword, headword_groups) = parse_definitions(&data);
 
     assert!(quick_def.is_some());
+    assert_eq!(headword.as_deref(), Some("comer"));
     assert!(!headword_groups.is_empty());
 
     // "comer" should have "to eat" as a translation
@@ -86,7 +87,7 @@ fn test_parse_definitions_empty_neodict() {
             }
         }
     });
-    let (quick_def, headword_groups) = parse_definitions(&data);
+    let (quick_def, _, headword_groups) = parse_definitions(&data);
     assert!(quick_def.is_none());
     assert!(headword_groups.is_empty());
 }
@@ -108,7 +109,7 @@ fn test_parse_definitions_missing_fields() {
             }
         }
     });
-    let (_, headword_groups) = parse_definitions(&data);
+    let (_, _, headword_groups) = parse_definitions(&data);
     assert_eq!(headword_groups.len(), 1);
     let translation = &headword_groups[0].pos_groups[0].senses[0].translations[0];
     assert_eq!(translation.text, "to eat");
@@ -137,7 +138,7 @@ fn test_parse_definitions_with_context() {
             }
         }
     });
-    let (_, headword_groups) = parse_definitions(&data);
+    let (_, _, headword_groups) = parse_definitions(&data);
     assert_eq!(headword_groups.len(), 1);
     let sense = &headword_groups[0].pos_groups[0].senses[0];
     assert_eq!(sense.context, "food");
@@ -264,6 +265,7 @@ async fn test_translate_with_wiremock() {
     let term = result.unwrap();
 
     assert_eq!(term.query, "comer");
+    assert_eq!(term.headword, "comer");
     assert!(term.quick_definition.is_some());
     assert!(!term.headword_groups.is_empty());
     assert!(!term.examples.is_empty());
