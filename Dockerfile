@@ -17,13 +17,10 @@ COPY src ./src
 COPY templates ./templates
 RUN cargo build --release
 
-FROM alpine:3
-RUN apk add --no-cache ca-certificates && \
-    addgroup -S app && adduser -S app -G app
+FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=builder /app/target/release/sdict /usr/local/bin/sdict
 COPY static /app/static
 WORKDIR /app
-USER app
 ENV PORT=3000
 EXPOSE 3000
 CMD ["sdict"]
