@@ -9,6 +9,10 @@
     <link rel="apple-touch-icon" href="/static/apple-touch-icon.png" />
     <link rel="manifest" href="/static/site.webmanifest" />
     <style>
+      /* https://cube.fyi */
+
+      /* === Global === */
+
       :root {
         --text: #1a1a1a;
         --text-secondary: #555;
@@ -59,12 +63,6 @@
         display: flex;
         flex-direction: column;
       }
-      .container {
-        max-width: 620px;
-        margin: 0 auto;
-        flex: 1;
-        width: 100%;
-      }
       a {
         color: var(--accent);
         text-decoration: none;
@@ -72,11 +70,53 @@
       a:hover {
         text-decoration: underline;
       }
+      footer {
+        margin-top: 3rem;
+        padding: 1rem;
+        text-align: center;
+        font-size: 0.8rem;
+        color: var(--text-faint);
+      }
 
-      /* Search form */
-      .search-form {
+      /* === Compositions === */
+
+      .wrapper {
+        max-width: 620px;
+        margin: 0 auto;
+        flex: 1;
+        width: 100%;
+      }
+      .flow > * + * {
+        margin-top: var(--flow-space, 1em);
+      }
+      .cluster {
         display: flex;
-        gap: 0.5rem;
+        flex-wrap: wrap;
+        gap: var(--cluster-gap, 0.5rem);
+        align-items: center;
+      }
+
+      /* === Utilities === */
+
+      .text-center { text-align: center; }
+      .color-secondary { color: var(--text-secondary); }
+      .color-faint { color: var(--text-faint); }
+      .text-s { font-size: 0.95rem; }
+      .text-xs { font-size: 0.85rem; }
+      .text-2xs { font-size: 0.75rem; }
+      .italic { font-style: italic; }
+      .font-semibold { font-weight: 600; }
+      .uppercase-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .indent { margin-left: 1.25rem; }
+
+      /* === Blocks === */
+
+      .search-form {
         margin-bottom: 2rem;
       }
       .search-form input[type="text"] {
@@ -94,10 +134,6 @@
         border-color: var(--accent);
         box-shadow: 0 0 0 2px var(--accent-light);
       }
-      .search-form button:focus-visible {
-        outline: none;
-        box-shadow: 0 0 0 2px var(--accent-light);
-      }
       .search-form button {
         font-family: inherit;
         font-size: 1rem;
@@ -111,38 +147,29 @@
       .search-form button:hover {
         background: var(--btn-hover);
       }
-      .search-form--small input[type="text"] {
-        font-size: 0.9rem;
-        padding: 0.4rem 0.65rem;
-      }
-      .search-form--small button {
-        font-size: 0.9rem;
-        padding: 0.4rem 0.85rem;
+      .search-form button:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--accent-light);
       }
 
-      /* Home page */
-      .home {
-        text-align: center;
+      .hero {
         padding-top: min(20vh, 150px);
       }
-      .home h1 {
+      .hero h1 {
         font-size: 2.5rem;
         margin-bottom: 0.25rem;
         font-weight: 400;
         letter-spacing: 0.05em;
       }
-      .home .tagline {
-        color: var(--text-secondary);
+      .hero .tagline {
         margin-bottom: 1.5rem;
-        font-size: 0.95rem;
       }
-      .home .search-form {
+      .hero .search-form {
         justify-content: center;
         max-width: 480px;
         margin: 0 auto;
       }
 
-      /* Results page */
       .results-header {
         margin-bottom: 0.25rem;
       }
@@ -151,70 +178,36 @@
         font-weight: 400;
         margin-bottom: 0;
       }
+
       .quick-def {
-        color: var(--text-secondary);
         font-size: 1.25rem;
         margin-bottom: 2rem;
       }
 
-      /* Definition hierarchy */
       .subheadword {
         font-size: 1.4rem;
         font-weight: 400;
         margin-top: 2rem;
         margin-bottom: 0.75rem;
       }
+
       .pos-group {
         margin-bottom: 1.5rem;
       }
-      .pos-label {
-        font-size: 0.75rem;
-        font-weight: 600;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--text-faint);
-        margin-bottom: 0.5rem;
-      }
+
       .sense {
         margin-bottom: 1rem;
       }
       .sense-header {
         margin-bottom: 0.25rem;
       }
-      .sense-number {
-        font-weight: 600;
-      }
-      .sense-context {
-        color: var(--text-secondary);
-      }
-      .region-label,
-      .register-label {
-        font-size: 0.85rem;
-        color: var(--text-secondary);
-        font-style: italic;
-      }
       .translation {
-        margin-left: 1.25rem;
-        font-weight: 600;
         margin-bottom: 0.25rem;
       }
-      .translation-letter {
-        color: var(--text-secondary);
-        font-weight: 400;
-      }
       .example {
-        margin-left: 1.25rem;
         margin-bottom: 0.5rem;
-        font-size: 0.95rem;
-      }
-      .example .es {
-        font-style: italic;
-      }
-      .example .en {
-        color: var(--text-secondary);
       }
 
-      /* Corpus examples */
       .examples-section {
         margin-top: 2.5rem;
         border-top: 1px solid var(--border-light);
@@ -225,16 +218,13 @@
         font-weight: 400;
         margin-bottom: 1rem;
       }
+
       .corpus-example {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 1rem;
         padding: 0.75rem 0;
         border-bottom: 1px solid var(--border-light);
-        font-size: 0.95rem;
-      }
-      .corpus-example .en {
-        color: var(--text-secondary);
       }
       .corpus-example em {
         font-style: normal;
@@ -247,19 +237,16 @@
         }
       }
 
-      /* Filter tags */
       .filter-tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.4rem;
+        --cluster-gap: 0.4rem;
         margin-bottom: 1rem;
       }
+
       .filter-tag {
         display: inline-block;
         padding: 0.25rem 0.7rem;
         border: 1px solid var(--border);
         border-radius: 999px;
-        font-size: 0.85rem;
         color: var(--accent);
         text-decoration: none;
       }
@@ -267,13 +254,7 @@
         background: var(--accent-light);
         text-decoration: none;
       }
-      .filter-tag.active {
-        background: var(--btn);
-        color: #fff;
-        border-color: var(--btn);
-      }
 
-      /* Site name link */
       .site-name {
         display: block;
         font-size: 1rem;
@@ -287,26 +268,31 @@
         text-decoration: none;
       }
 
-      /* Error/not-found page */
       .error-message {
-        color: var(--text-secondary);
         padding: 1rem 0;
         margin-bottom: 1.5rem;
       }
 
-      /* Footer */
-      .footer {
-        margin-top: 3rem;
-        padding: 1rem;
-        text-align: center;
-        font-size: 0.8rem;
-        color: var(--text-faint);
+      /* === Exceptions === */
+
+      .filter-tag[data-state="active"] {
+        background: var(--btn);
+        color: #fff;
+        border-color: var(--btn);
+      }
+      .search-form[data-size="small"] input[type="text"] {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.65rem;
+      }
+      .search-form[data-size="small"] button {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.85rem;
       }
     </style>
   </head>
   <body>
-    <div class="container">{% block content %}{% endblock %}</div>
-    <footer class="footer">
+    <div class="wrapper">{% block content %}{% endblock %}</div>
+    <footer>
       Powered by <a href="https://www.spanishdict.com">SpanishDict</a>
     </footer>
   </body>

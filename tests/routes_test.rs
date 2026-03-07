@@ -187,7 +187,7 @@ async fn test_translate_with_filter() {
         .unwrap();
     let html = String::from_utf8(body.to_vec()).unwrap();
     // The active filter tag should be highlighted
-    assert!(html.contains(r#"class="filter-tag active""#));
+    assert!(html.contains(r#"data-state="active""#));
 }
 
 #[tokio::test]
