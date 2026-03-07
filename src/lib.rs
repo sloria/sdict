@@ -12,6 +12,7 @@ use axum::{
 use reqwest::Client;
 use serde::Deserialize;
 use std::sync::Arc;
+use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
 pub(crate) fn translation_letter(index: &usize) -> char {
@@ -114,6 +115,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/", get(home))
         .route("/search", post(search))
         .route("/translate/{term}", get(translate))
+        .nest_service("/static", ServeDir::new("static"))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
 }
