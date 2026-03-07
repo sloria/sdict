@@ -1,0 +1,7 @@
+[tools]
+prek = "latest"
+"aqua:watchexec/cargo-watch" = "latest"
+
+[tasks.start]
+description = "Run dev server with auto-reload"
+run = "cargo watch -x run"

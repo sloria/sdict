@@ -1,0 +1,50 @@
+{% extends "base.html" %} {% block title %}{{ term.query }} - sdict{% endblock
+%} {% block content %}
+<a href="/" class="site-name">sdict</a>
+<form class="search-form" action="/search" method="post">
+  <input type="text" name="term" value="{{ term.query }}" autofocus />
+  <button type="submit">Look up</button>
+</form>
+
+<div class="results-header">
+  <h1>{{ term.query }}</h1>
+</div>
+
+{% if let Some(qd) = term.quick_definition %}
+<p class="quick-def">{{ qd }}</p>
+{% endif %} {% for entry in term.entries %}
+<div class="entry">
+  <div class="definition">{{ entry.definition }}</div>
+  {% for ex in entry.examples %}
+  <div class="example">
+    <div class="es">{{ ex.spanish }}</div>
+    <div class="en">{{ ex.english }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endfor %} {% if !term.examples.is_empty() %}
+<div class="examples-section">
+  <h2>Examples</h2>
+  {% if !filter_tags.is_empty() %}
+  <div class="filter-tags">
+    <a
+      href="/translate/{{ term.query }}"
+      class="filter-tag{% if active_filter.is_none() %} active{% endif %}"
+      >all</a
+    >
+    {% for tag in filter_tags %}
+    <a
+      href="/translate/{{ term.query }}?filter={{ tag.label|urlencode }}"
+      class="filter-tag{% if active_filter.as_deref() == Some(tag.label.as_str()) %} active{% endif %}"
+      >{{ tag.label }} ({{ tag.count }})</a
+    >
+    {% endfor %}
+  </div>
+  {% endif %} {% for ex in filtered_examples %}
+  <div class="corpus-example">
+    <div class="es">{{ ex.spanish|safe }}</div>
+    <div class="en">{{ ex.english|safe }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %} {% endblock %}
