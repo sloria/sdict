@@ -16,16 +16,13 @@ use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 
-pub(crate) fn translation_letter(index: &usize) -> char {
-    let clamped = (*index).min(25);
-    (b'a' + clamped as u8) as char
-}
-
 #[derive(Clone)]
 pub struct AppState {
     pub client: Client,
     pub base_url: String,
 }
+
+// --- Template structs ---
 
 #[derive(Template, WebTemplate)]
 #[template(path = "home.html")]
@@ -47,6 +44,19 @@ struct ErrorTemplate {
     message: String,
 }
 
+// Custom jinja filters
+mod filters {
+    /// Convert an index to a letter (0 -> 'a', 1 -> 'b', ...)
+    /// Useful for rendering nested ordered lists.
+    #[askama::filter_fn]
+    pub fn index_to_letter(index: &usize, _: &dyn askama::Values) -> askama::Result<char> {
+        let clamped = (*index).min(25);
+        Ok((b'a' + clamped as u8) as char)
+    }
+}
+
+// --- Structs for handlers ---
+
 #[derive(Deserialize)]
 pub struct SearchForm {
     term: String,
@@ -56,6 +66,8 @@ pub struct SearchForm {
 pub struct TranslateQuery {
     pub filter: Option<String>,
 }
+
+// --- Handlers ---
 
 async fn home() -> impl IntoResponse {
     HomeTemplate
@@ -112,20 +124,15 @@ async fn translate(
     }
 }
 
+// --- Router ---
+
 pub fn build_router(state: AppState) -> Router {
     Router::new()
         .route("/", get(home))
         .route("/search", post(search))
         .route("/translate/{term}", get(translate))
         .nest_service("/static", ServeDir::new("static"))
-        .layer(SetResponseHeaderLayer::overriding(
-            axum::http::header::X_CONTENT_TYPE_OPTIONS,
-            HeaderValue::from_static("nosniff"),
-        ))
-        .layer(SetResponseHeaderLayer::overriding(
-            axum::http::header::X_FRAME_OPTIONS,
-            HeaderValue::from_static("DENY"),
-        ))
+        // Security headers
         .layer(SetResponseHeaderLayer::overriding(
             axum::http::header::CONTENT_SECURITY_POLICY,
             HeaderValue::from_static("default-src 'self'; style-src 'unsafe-inline' 'self'"),
