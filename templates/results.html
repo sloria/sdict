@@ -23,15 +23,17 @@
   <div class="sense">
     <div class="sense-header">
       <span class="font-semibold">{{ sense.index }}.</span>
-      {% if !sense.context.is_empty() %}
-      <span class="color-secondary">({{ sense.context }})</span>
-      {% endif %}
-      {% for region in sense.regions %}
-      <span class="text-xs color-secondary italic">({{ region }})</span>
-      {% endfor %}
-      {% for reg in sense.register_labels %}
-      <span class="text-xs color-secondary italic">({{ reg }})</span>
-      {% endfor %}
+      <span class="color-green"> 
+        {% if !sense.context.is_empty() %}
+        <span >({{ sense.context }})</span>
+        {% endif %}
+        {% for region in sense.regions %}
+        <span class="text-xs italic">({{ region }})</span>
+        {% endfor %}
+        {% for reg in sense.register_labels %}
+        <span class="text-xs italic">({{ reg }})</span>
+        {% endfor %}
+      </span>
     </div>
     {% for tr in sense.translations %}
     <div class="translation indent font-semibold">
