@@ -249,6 +249,59 @@ async fn test_translate_fetch_error() {
 }
 
 #[tokio::test]
+async fn test_translate_rejects_too_long_term() {
+    let long_term = "a".repeat(101);
+    let response = app("http://localhost")
+        .oneshot(
+            Request::builder()
+                .uri(format!("/translate/{long_term}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let html = String::from_utf8(body.to_vec()).unwrap();
+    assert!(html.contains("Search input is too long"));
+}
+
+#[tokio::test]
+async fn test_translate_accepts_max_length_term() {
+    let mock_server = MockServer::start().await;
+    let term = "a".repeat(100);
+
+    Mock::given(method("GET"))
+        .and(path(format!("/translate/{term}")))
+        .respond_with(ResponseTemplate::new(200).set_body_string(load_fixture("comer.html")))
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/examples/{term}")))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_string(load_fixture("comer_examples.html")),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let response = app(&mock_server.uri())
+        .oneshot(
+            Request::builder()
+                .uri(format!("/translate/{term}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
 async fn test_not_found() {
     let response = app("http://localhost")
         .oneshot(

@@ -2,6 +2,7 @@
   <input
     type="text"
     name="term"
+    maxlength="100"
     {% if !search.value.is_empty() %}value="{{ search.value }}"{% endif %}
     placeholder="Spanish or English…"
     aria-label="Search for a Spanish or English word"
