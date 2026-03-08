@@ -33,8 +33,8 @@ async fn test_home_page() {
         .unwrap();
     let html = String::from_utf8(body.to_vec()).unwrap();
     assert!(html.contains("sdict"));
-    assert!(html.contains(r#"action="/search""#));
-    assert!(html.contains(r#"name="term""#));
+    assert!(html.contains("action=/search"));
+    assert!(html.contains("name=term"));
 }
 
 #[tokio::test]
@@ -187,7 +187,7 @@ async fn test_translate_with_filter() {
         .unwrap();
     let html = String::from_utf8(body.to_vec()).unwrap();
     // The active filter tag should be highlighted
-    assert!(html.contains(r#"data-state="active""#));
+    assert!(html.contains("data-state=active"));
 }
 
 #[tokio::test]
@@ -319,5 +319,5 @@ async fn test_not_found() {
         .unwrap();
     let html = String::from_utf8(body.to_vec()).unwrap();
     assert!(html.contains("Page not found"));
-    assert!(html.contains(r#"action="/search""#));
+    assert!(html.contains("action=/search"));
 }
