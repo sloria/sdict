@@ -1,8 +1,11 @@
 [package]
 name = "sdict"
+description = "A clutter-free frontend for SpanishDict.com."
+readme = "README.md"
 version = "0.0.0-dev"
 edition = "2024"
 publish = false
+license = "MIT"
 
 [dependencies]
 askama = "0.15"

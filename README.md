@@ -20,6 +20,12 @@ A clutter-free frontend for [SpanishDict](https://www.spanishdict.com/). No ads,
   </tr>
 </table>
 
+## Public instance
+
+I run a public instance at https://sdict.sloria.fun.
+
+I can't make any promises on uptime, so you should probably host your own...
+
 ## Self-host with Docker
 
 ```bash
@@ -40,7 +46,7 @@ services:
 docker compose up
 ```
 
-The image is tiny (~15Mb) and uses very little resources (< 1Mb of RAM) while running.
+The image is tiny (~15Mb) and runs on very little resources (< 1Mb of RAM).
 
 ## Environment variables
 
@@ -50,7 +56,7 @@ All environment variables are optional.
 - `LOG_FORMAT` — Log output format: `json` for structured JSON logging (default: human-readable)
 - `RUST_LOG` — Log level filter (default: `info`)
 - `SENTRY_DSN` — Sentry/GlitchTip DSN
-- `SENTRY_ENV` — Sentry/GlitchTip environment, e.g. `production`, `staging`
+- `SENTRY_ENV` — Sentry/GlitchTip environment
 
 ## Development
 
