@@ -198,7 +198,7 @@ fn sanitize_html(s: &str) -> String {
 
 // -- Scraping --
 
-const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36";
+const USER_AGENT: &str = "sdict (+https://github.com/sloria/sdict)";
 
 pub async fn fetch_page(client: &Client, url: &str) -> Result<String, SdictError> {
     tracing::debug!(url = %url, "fetching page");
