@@ -35,12 +35,15 @@
     {% for tr in sense.translations %}
     <div class="translation indent font-semibold">
       {% if sense.translations.len() > 1 %}
-      <span class="color-secondary" style="font-weight: 400">{{ loop.index0|index_to_letter }}.</span>
+      <span class="color-secondary" class="font-normal">{{ loop.index0|index_to_letter }}.</span>
       {% endif %}
-      {{ tr.text }}
+      {% if tr.text.is_empty() %}<span class="font-normal">no direct translation</span>
+      {% else %}
+      <a href="/translate/{{ tr.text|urlencode }}">{{ tr.text }}</a>
+      {% endif %}
     </div>
     {% for ex in tr.examples %}
-    <div class="example indent text-s">
+    <div class="example indent">
       <div class="italic" lang="es">{{ ex.spanish }}</div>
       <div class="color-secondary">{{ ex.english }}</div>
     </div>
@@ -75,7 +78,7 @@
      the search term. The HTML is sanitized at parse time (via ammonia) to only
      allow <em> tags; all other HTML is stripped. #}
   {% for ex in filtered_examples %}
-  <div class="corpus-example text-s">
+  <div class="corpus-example">
     <div lang="es">{{ ex.spanish|safe }}</div>
     <div class="color-secondary">{{ ex.english|safe }}</div>
   </div>

@@ -127,6 +127,9 @@
       .font-semibold {
         font-weight: 600;
       }
+      .font-normal {
+        font-weight: 400;
+      }
       .uppercase-label {
         font-size: 0.75rem;
         font-weight: 600;
@@ -141,34 +144,38 @@
 
       .search-form {
         margin-bottom: 1rem;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: var(--bg-input);
+      }
+      .search-form:focus-within {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px var(--accent-light);
       }
       .search-form input[type="text"] {
         flex: 1;
         font-family: inherit;
         font-size: 1rem;
         padding: 0.5rem 0.75rem;
-        border: 1px solid var(--border);
-        border-radius: 4px;
-        background: var(--bg-input);
+        border: none;
+        background: none;
         color: var(--text);
-      }
-      .search-form input[type="text"]:focus {
         outline: none;
-        border-color: var(--accent);
-        box-shadow: 0 0 0 2px var(--accent-light);
       }
       .search-form button {
-        font-family: inherit;
-        font-size: 1rem;
-        padding: 0.5rem 1rem;
-        background: var(--btn);
-        color: #fff;
-        border: 1px solid transparent;
-        border-radius: 4px;
+        background: none;
+        border: none;
+        color: var(--text-faint);
+        padding: 0.5rem;
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
       }
       .search-form button:hover {
-        background: var(--btn-hover);
+        color: var(--text);
       }
       .search-form button:focus-visible {
         outline: none;
@@ -284,11 +291,11 @@
         font-size: 1rem;
         font-weight: 400;
         letter-spacing: 0.05em;
-        color: var(--text-faint);
+        color: var(--text);
         margin-bottom: 0.5rem;
       }
       .site-name:hover {
-        color: var(--text);
+        color: var(--text-faint);
         text-decoration: none;
       }
 
@@ -303,15 +310,6 @@
         background: var(--btn);
         color: #fff;
         border-color: var(--btn);
-      }
-      /* iOS Safari zooms in on inputs with font-size < 16px */
-      .search-form[data-size="small"] input[type="text"] {
-        font-size: max(16px, 0.9rem);
-        padding: 0.4rem 0.65rem;
-      }
-      .search-form[data-size="small"] button {
-        font-size: max(16px, 0.9rem);
-        padding: 0.4rem 0.85rem;
       }
     </style>
   </head>

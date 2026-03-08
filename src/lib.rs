@@ -25,7 +25,6 @@ pub struct AppState {
 // --- Template structs ---
 
 struct SearchFormProps {
-    small: bool,
     value: String,
     autofocus: bool,
 }
@@ -87,7 +86,6 @@ pub struct TranslateQuery {
 async fn home() -> impl IntoResponse {
     HomeTemplate {
         search: SearchFormProps {
-            small: false,
             value: String::new(),
             autofocus: true,
         },
@@ -99,7 +97,6 @@ async fn not_found() -> impl IntoResponse {
         StatusCode::NOT_FOUND,
         NotFoundTemplate {
             search: SearchFormProps {
-                small: true,
                 value: String::new(),
                 autofocus: true,
             },
@@ -129,7 +126,6 @@ async fn translate(
                 None => term.examples.clone(),
             };
             let search = SearchFormProps {
-                small: true,
                 value: term.query.clone(),
                 autofocus: false,
             };
@@ -146,7 +142,6 @@ async fn translate(
             StatusCode::OK,
             ErrorTemplate {
                 search: SearchFormProps {
-                    small: true,
                     value: t.clone(),
                     autofocus: true,
                 },
@@ -160,7 +155,6 @@ async fn translate(
                 StatusCode::OK,
                 ErrorTemplate {
                     search: SearchFormProps {
-                        small: true,
                         value: term.clone(),
                         autofocus: true,
                     },
