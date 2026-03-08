@@ -10,7 +10,6 @@ use std::sync::LazyLock;
 static EM_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<em>(.*?)</em>").unwrap());
 static SD_DATA_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"SD_COMPONENT_DATA = (\{.*?\});").unwrap());
-static SCRIPT_SELECTOR: LazyLock<Selector> = LazyLock::new(|| Selector::parse("script").unwrap());
 
 /// Looks up a term on SpanishDict and return its definitions and examples
 pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Term, SdictError> {
@@ -227,8 +226,9 @@ pub async fn fetch_page(client: &Client, url: &str) -> Result<String, SdictError
 /// all the data needed to parse the definitions and examples.
 pub fn extract_sd_data(html: &str) -> Result<Value, SdictError> {
     let document = Html::parse_document(html);
+    let selector = Selector::parse("script").unwrap();
 
-    for element in document.select(&SCRIPT_SELECTOR) {
+    for element in document.select(&selector) {
         let text = element.text().collect::<String>();
         if text.contains("SD_COMPONENT_DATA")
             && let Some(caps) = SD_DATA_RE.captures(&text)

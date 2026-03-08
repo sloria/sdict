@@ -1,6 +1,5 @@
 FROM rust:1-alpine AS chef
 RUN apk add --no-cache musl-dev
-# Install cargo-chef for efficient caching of dependencies
 RUN cargo install cargo-chef
 WORKDIR /app
 
