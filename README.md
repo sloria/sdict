@@ -11,6 +11,14 @@
 
 A clutter-free frontend for [SpanishDict](https://www.spanishdict.com/). No ads, no trackers, no JS. Just the dictionary.
 
+<table>
+  <tr>
+    <td><img src="screenshots/home-desktop.png" alt="sdict home page" width="480"></td>
+    <td><img src="screenshots/results-desktop.png" alt="sdict results page on desktop" width="480"></td>
+    <td><img src="screenshots/results-mobile.png" alt="sdict results page on mobile" width="200"></td>
+  </tr>
+</table>
+
 ## Self-host with Docker
 
 ```bash
@@ -30,6 +38,8 @@ services:
 ```bash
 docker compose up
 ```
+
+The image is tiny (~15Mb) and uses very little resources (< 1Mb of RAM) while running.
 
 ## Environment variables
 
