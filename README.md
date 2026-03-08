@@ -47,6 +47,7 @@ The image is tiny (~15Mb) and uses very little resources (< 1Mb of RAM) while ru
 All environment variables are optional.
 
 - `PORT` — Port to listen on (default: `3000`)
+- `LOG_FORMAT` — Log output format: `json` for structured JSON logging (default: human-readable)
 - `RUST_LOG` — Log level filter (default: `info`)
 - `SENTRY_DSN` — Sentry/GlitchTip DSN
 - `SENTRY_ENV` — Sentry/GlitchTip environment, e.g. `production`, `staging`

@@ -14,11 +14,25 @@ async fn main() {
         ..Default::default()
     });
 
-    tracing_subscriber::registry()
-        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
-        .with(tracing_subscriber::fmt::layer())
-        .with(sentry_tracing::layer())
-        .init();
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let log_format = std::env::var("LOG_FORMAT").unwrap_or_default();
+
+    match log_format.as_str() {
+        "json" => {
+            tracing_subscriber::registry()
+                .with(env_filter)
+                .with(tracing_subscriber::fmt::layer().json())
+                .with(sentry_tracing::layer())
+                .init();
+        }
+        _ => {
+            tracing_subscriber::registry()
+                .with(env_filter)
+                .with(tracing_subscriber::fmt::layer())
+                .with(sentry_tracing::layer())
+                .init();
+        }
+    }
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
     let addr = format!("0.0.0.0:{port}");
