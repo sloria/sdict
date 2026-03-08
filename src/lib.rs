@@ -5,7 +5,7 @@ use askama_web::WebTemplate;
 use axum::http::HeaderValue;
 use axum::{
     Router,
-    extract::{Form, Path, Query, State},
+    extract::{DefaultBodyLimit, Form, Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Redirect},
     routing::{get, post},
@@ -21,6 +21,8 @@ pub struct AppState {
     pub client: Client,
     pub base_url: String,
 }
+
+const MAX_TERM_LENGTH: usize = 100;
 
 // --- Template structs ---
 
@@ -106,7 +108,7 @@ async fn not_found() -> impl IntoResponse {
 
 async fn search(Form(form): Form<SearchForm>) -> impl IntoResponse {
     let term = form.term.trim().to_string();
-    if term.is_empty() {
+    if term.is_empty() || term.len() > MAX_TERM_LENGTH {
         return Redirect::to("/").into_response();
     }
     let encoded = urlencoding::encode(&term);
@@ -118,6 +120,9 @@ async fn translate(
     Path(term): Path<String>,
     Query(query): Query<TranslateQuery>,
 ) -> impl IntoResponse {
+    if term.len() > MAX_TERM_LENGTH {
+        return Redirect::to("/").into_response();
+    }
     match spanishdict::translate(&state.client, &state.base_url, &term).await {
         Ok(term) => {
             let filter_tags = spanishdict::extract_filter_tags(&term.examples);
@@ -171,7 +176,11 @@ async fn translate(
 pub fn build_router(state: AppState) -> Router {
     Router::new()
         .route("/", get(home))
-        .route("/search", post(search))
+        .route(
+            "/search",
+            // Limit the form post data to 1Kb
+            post(search).layer(DefaultBodyLimit::max(1024)),
+        )
         .route("/translate/{term}", get(translate))
         .fallback(get(not_found))
         .nest_service("/static", ServeDir::new("static"))
