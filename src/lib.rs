@@ -24,13 +24,22 @@ pub struct AppState {
 
 // --- Template structs ---
 
+struct SearchFormProps {
+    small: bool,
+    value: String,
+    autofocus: bool,
+}
+
 #[derive(Template, WebTemplate)]
 #[template(path = "home.html")]
-struct HomeTemplate;
+struct HomeTemplate {
+    search: SearchFormProps,
+}
 
 #[derive(Template, WebTemplate)]
 #[template(path = "results.html")]
 struct ResultsTemplate {
+    search: SearchFormProps,
     term: spanishdict::Term,
     filter_tags: Vec<spanishdict::FilterTag>,
     active_filter: Option<String>,
@@ -40,8 +49,14 @@ struct ResultsTemplate {
 #[derive(Template, WebTemplate)]
 #[template(path = "error.html")]
 struct ErrorTemplate {
-    query: String,
+    search: SearchFormProps,
     message: String,
+}
+
+#[derive(Template, WebTemplate)]
+#[template(path = "404.html")]
+struct NotFoundTemplate {
+    search: SearchFormProps,
 }
 
 // Custom jinja filters
@@ -70,7 +85,26 @@ pub struct TranslateQuery {
 // --- Handlers ---
 
 async fn home() -> impl IntoResponse {
-    HomeTemplate
+    HomeTemplate {
+        search: SearchFormProps {
+            small: false,
+            value: String::new(),
+            autofocus: true,
+        },
+    }
+}
+
+async fn not_found() -> impl IntoResponse {
+    (
+        StatusCode::NOT_FOUND,
+        NotFoundTemplate {
+            search: SearchFormProps {
+                small: true,
+                value: String::new(),
+                autofocus: true,
+            },
+        },
+    )
 }
 
 async fn search(Form(form): Form<SearchForm>) -> impl IntoResponse {
@@ -94,7 +128,13 @@ async fn translate(
                 Some(f) => spanishdict::filter_examples(&term.examples, f),
                 None => term.examples.clone(),
             };
+            let search = SearchFormProps {
+                small: true,
+                value: term.query.clone(),
+                autofocus: false,
+            };
             ResultsTemplate {
+                search,
                 term,
                 filter_tags,
                 active_filter: query.filter,
@@ -105,7 +145,11 @@ async fn translate(
         Err(spanishdict::SdictError::NotFound(t)) => (
             StatusCode::OK,
             ErrorTemplate {
-                query: t.clone(),
+                search: SearchFormProps {
+                    small: true,
+                    value: t.clone(),
+                    autofocus: true,
+                },
                 message: format!("No results for '{t}'."),
             },
         )
@@ -115,7 +159,11 @@ async fn translate(
             (
                 StatusCode::OK,
                 ErrorTemplate {
-                    query: term.clone(),
+                    search: SearchFormProps {
+                        small: true,
+                        value: term.clone(),
+                        autofocus: true,
+                    },
                     message: "Could not look up this term. Please try again.".to_string(),
                 },
             )
@@ -131,6 +179,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/", get(home))
         .route("/search", post(search))
         .route("/translate/{term}", get(translate))
+        .fallback(get(not_found))
         .nest_service("/static", ServeDir::new("static"))
         // Security headers
         .layer(SetResponseHeaderLayer::overriding(

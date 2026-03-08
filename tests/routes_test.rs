@@ -247,3 +247,24 @@ async fn test_translate_fetch_error() {
     let html = String::from_utf8(body.to_vec()).unwrap();
     assert!(html.contains("Could not look up this term"));
 }
+
+#[tokio::test]
+async fn test_not_found() {
+    let response = app("http://localhost")
+        .oneshot(
+            Request::builder()
+                .uri("/nonexistent")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let html = String::from_utf8(body.to_vec()).unwrap();
+    assert!(html.contains("Page not found"));
+    assert!(html.contains(r#"action="/search""#));
+}
