@@ -2,14 +2,17 @@ pub mod spanishdict;
 
 use askama::Template;
 use askama_web::WebTemplate;
+use axum::body::Body;
 use axum::http::HeaderValue;
 use axum::{
     Router,
     extract::{DefaultBodyLimit, Form, Path, Query, State},
-    http::StatusCode,
-    response::{IntoResponse, Redirect},
+    http::{StatusCode, header},
+    middleware,
+    response::{IntoResponse, Redirect, Response},
     routing::{get, post},
 };
+use http_body_util::BodyExt;
 use reqwest::Client;
 use serde::Deserialize;
 use tower_http::services::ServeDir;
@@ -178,6 +181,32 @@ async fn translate(
     }
 }
 
+// --- Middleware ---
+
+/// Middleware to minify HTML responses with minify-html
+async fn minify_response(response: Response) -> Response {
+    let is_html = response
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|ct| ct.contains("text/html"));
+    if !is_html {
+        return response;
+    }
+    let (parts, body) = response.into_parts();
+    let Ok(collected) = body.collect().await else {
+        return Response::from_parts(parts, Body::empty());
+    };
+    let bytes = collected.to_bytes();
+    let cfg = minify_html::Cfg {
+        minify_css: true,
+        keep_input_type_text_attr: true,
+        ..Default::default()
+    };
+    let minified = minify_html::minify(&bytes, &cfg);
+    Response::from_parts(parts, Body::from(minified))
+}
+
 // --- Router ---
 
 pub fn build_router(state: AppState) -> Router {
@@ -191,6 +220,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/translate/{term}", get(translate))
         .fallback(get(not_found))
         .nest_service("/static", ServeDir::new("static"))
+        .layer(middleware::map_response(minify_response))
         // Security headers
         .layer(SetResponseHeaderLayer::overriding(
             axum::http::header::CONTENT_SECURITY_POLICY,
