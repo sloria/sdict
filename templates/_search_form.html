@@ -1,0 +1,11 @@
+<form class="search-form cluster"{% if search.small %} data-size="small"{% endif %} action="/search" method="post">
+  <input
+    type="text"
+    name="term"
+    {% if !search.value.is_empty() %}value="{{ search.value }}"{% endif %}
+    placeholder="Spanish or English…"
+    aria-label="Search for a Spanish or English word"
+    {% if search.autofocus %}autofocus{% endif %}
+  />
+  <button type="submit">Look up</button>
+</form>

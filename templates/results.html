@@ -1,10 +1,7 @@
 {% extends "base.html" %} {% block title %}{{ term.query }} - sdict{% endblock
 %} {% block content %}
 <a href="/" class="site-name">sdict</a>
-<form class="search-form cluster" data-size="small" action="/search" method="post">
-  <input type="text" name="term" value="{{ term.query }}" aria-label="Search for a Spanish or English word" />
-  <button type="submit">Look up</button>
-</form>
+{% include "_search_form.html" %}
 
 <div class="results-header">
   <h1>{{ term.headword }}</h1>
