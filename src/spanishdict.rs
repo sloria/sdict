@@ -24,8 +24,8 @@ pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Te
 
     let html = html_result?;
     let data = extract_sd_data(&html)?;
-    let (quick_definition, headword, headword_groups) = parse_definitions(&data);
-    if headword_groups.is_empty() {
+    let parsed = parse_definitions(&data);
+    if parsed.headword_groups.is_empty() {
         return Err(SdictError::NotFound(term.to_string()));
     }
 
@@ -46,16 +46,16 @@ pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Te
 
     tracing::debug!(
         term = %term,
-        headword_groups = headword_groups.len(),
+        headword_groups = parsed.headword_groups.len(),
         examples = examples.len(),
         "lookup complete"
     );
 
     Ok(Term {
         query: term.to_string(),
-        headword: headword.unwrap_or_else(|| term.to_string()),
-        quick_definition,
-        headword_groups,
+        headword: parsed.headword.unwrap_or_else(|| term.to_string()),
+        quick_definition: parsed.quick_definition,
+        headword_groups: parsed.headword_groups,
         examples,
     })
 }
@@ -135,6 +135,13 @@ pub struct ExampleSentence {
 pub struct CorpusExample {
     pub spanish: String,
     pub english: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ParsedDefinitions {
+    pub quick_definition: Option<String>,
+    pub headword: Option<String>,
+    pub headword_groups: Vec<HeadwordGroup>,
 }
 
 #[derive(Debug, Clone)]
@@ -255,9 +262,8 @@ fn extract_string_array(value: &Value, key: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// Parses the definitions from the SD_COMPONENT_DATA JSON. Returns a tuple of
-/// (quick_definition, headword, headword_groups).
-pub fn parse_definitions(data: &Value) -> (Option<String>, Option<String>, Vec<HeadwordGroup>) {
+/// Parses the definitions from the SD_COMPONENT_DATA JSON.
+pub fn parse_definitions(data: &Value) -> ParsedDefinitions {
     let neodict = data
         .pointer("/sdDictionaryResultsProps/entry/neodict")
         .and_then(|v| v.as_array());
@@ -274,6 +280,9 @@ pub fn parse_definitions(data: &Value) -> (Option<String>, Option<String>, Vec<H
 
             let mut pos_groups = Vec::new();
 
+            // posGroups: array of { pos: { nameEn }, senses: [...] }
+            // senses: array of { idx, contextEn, regionsDisplay, registerLabelsDisplay, translations }
+            // translations: array of { translation, examples }
             if let Some(groups) = item.get("posGroups").and_then(|v| v.as_array()) {
                 for group in groups {
                     let pos_label = group
@@ -383,15 +392,20 @@ pub fn parse_definitions(data: &Value) -> (Option<String>, Option<String>, Vec<H
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
-    (quick_definition, headword, headword_groups)
+    ParsedDefinitions {
+        quick_definition,
+        headword,
+        headword_groups,
+    }
 }
 
 // -- Examples section parsing --
 
+/// Parses corpus examples from the SD_COMPONENT_DATA of the examples page.
 pub fn parse_examples(data: &Value) -> Vec<CorpusExample> {
     // The examples page stores data in explorationResponseFromServerEs
     // for Spanish words (source=Spanish, target=English).
-    // Each sentence has: source (Spanish with <em>), target (English with <em>), corpus, id
+    // Each sentence has: source (Spanish sentence), target (English sentence), corpus, id
     let sentences = data
         .pointer("/explorationResponseFromServerEs/data/data/sentences")
         .and_then(|v| v.as_array());
