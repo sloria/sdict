@@ -10,9 +10,8 @@ use std::sync::LazyLock;
 static EM_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<em>(.*?)</em>").unwrap());
 static SD_DATA_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"SD_COMPONENT_DATA = (\{.*?\});").unwrap());
-static SCRIPT_SELECTOR: LazyLock<Selector> = LazyLock::new(|| Selector::parse("script").unwrap());
 
-/// Look up a term on SpanishDict and return its definitions and examples
+/// Looks up a term on SpanishDict and return its definitions and examples
 pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Term, SdictError> {
     tracing::info!(term = %term, "looking up term");
     let url = format!("{base_url}/translate/{term}");
@@ -24,8 +23,8 @@ pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Te
 
     let html = html_result?;
     let data = extract_sd_data(&html)?;
-    let (quick_definition, headword, headword_groups) = parse_definitions(&data);
-    if headword_groups.is_empty() {
+    let parsed = parse_definitions(&data);
+    if parsed.headword_groups.is_empty() {
         return Err(SdictError::NotFound(term.to_string()));
     }
 
@@ -46,16 +45,16 @@ pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Te
 
     tracing::debug!(
         term = %term,
-        headword_groups = headword_groups.len(),
+        headword_groups = parsed.headword_groups.len(),
         examples = examples.len(),
         "lookup complete"
     );
 
     Ok(Term {
         query: term.to_string(),
-        headword: headword.unwrap_or_else(|| term.to_string()),
-        quick_definition,
-        headword_groups,
+        headword: parsed.headword.unwrap_or_else(|| term.to_string()),
+        quick_definition: parsed.quick_definition,
+        headword_groups: parsed.headword_groups,
         examples,
     })
 }
@@ -138,12 +137,19 @@ pub struct CorpusExample {
 }
 
 #[derive(Debug, Clone)]
+pub struct ParsedDefinitions {
+    pub quick_definition: Option<String>,
+    pub headword: Option<String>,
+    pub headword_groups: Vec<HeadwordGroup>,
+}
+
+#[derive(Debug, Clone)]
 pub struct FilterTag {
     pub label: String,
     pub count: usize,
 }
 
-/// Extract filter tags from corpus examples by counting the text inside `<em>` tags
+/// Extracts filter tags from corpus examples by counting the text inside `<em>` tags
 /// in the English translations. Returns tags sorted by count descending.
 pub fn extract_filter_tags(examples: &[CorpusExample]) -> Vec<FilterTag> {
     let mut counts: HashMap<String, usize> = HashMap::new();
@@ -167,7 +173,7 @@ pub fn extract_filter_tags(examples: &[CorpusExample]) -> Vec<FilterTag> {
     tags
 }
 
-/// Filter corpus examples to only those whose English text contains
+/// Filters corpus examples to only those whose English text contains
 /// `<em>{tag}</em>` (case-insensitive).
 pub fn filter_examples(examples: &[CorpusExample], tag: &str) -> Vec<CorpusExample> {
     let tag_lower = tag.to_lowercase();
@@ -190,7 +196,7 @@ static HTML_SANITIZER: LazyLock<Builder<'static>> = LazyLock::new(|| {
     builder
 });
 
-/// Sanitize HTML, allowing only `<em>` tags (used by SpanishDict to highlight
+/// Sanitizes HTML, allowing only `<em>` tags (used by SpanishDict to highlight
 /// the search term in corpus examples). All other tags are stripped.
 fn sanitize_html(s: &str) -> String {
     HTML_SANITIZER.clean(s).to_string()
@@ -216,10 +222,13 @@ pub async fn fetch_page(client: &Client, url: &str) -> Result<String, SdictError
     Ok(response.text().await?)
 }
 
+/// Extracts the SD_COMPONENT_DATA JSON object from the HTML, which contains
+/// all the data needed to parse the definitions and examples.
 pub fn extract_sd_data(html: &str) -> Result<Value, SdictError> {
     let document = Html::parse_document(html);
+    let selector = Selector::parse("script").unwrap();
 
-    for element in document.select(&SCRIPT_SELECTOR) {
+    for element in document.select(&selector) {
         let text = element.text().collect::<String>();
         if text.contains("SD_COMPONENT_DATA")
             && let Some(caps) = SD_DATA_RE.captures(&text)
@@ -239,6 +248,8 @@ pub fn extract_sd_data(html: &str) -> Result<Value, SdictError> {
 
 // -- Definition parsing --
 
+/// Helper to extract an array of strings from a JSON value
+/// Example: {"regionsDisplay": ["Spain", "Mexico"]} -> vec!["Spain", "Mexico"]
 fn extract_string_array(value: &Value, key: &str) -> Vec<String> {
     value
         .get(key)
@@ -251,7 +262,8 @@ fn extract_string_array(value: &Value, key: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
-pub fn parse_definitions(data: &Value) -> (Option<String>, Option<String>, Vec<HeadwordGroup>) {
+/// Parses the definitions from the SD_COMPONENT_DATA JSON.
+pub fn parse_definitions(data: &Value) -> ParsedDefinitions {
     let neodict = data
         .pointer("/sdDictionaryResultsProps/entry/neodict")
         .and_then(|v| v.as_array());
@@ -268,6 +280,9 @@ pub fn parse_definitions(data: &Value) -> (Option<String>, Option<String>, Vec<H
 
             let mut pos_groups = Vec::new();
 
+            // posGroups: array of { pos: { nameEn }, senses: [...] }
+            // senses: array of { idx, contextEn, regionsDisplay, registerLabelsDisplay, translations }
+            // translations: array of { translation, examples }
             if let Some(groups) = item.get("posGroups").and_then(|v| v.as_array()) {
                 for group in groups {
                     let pos_label = group
@@ -377,15 +392,20 @@ pub fn parse_definitions(data: &Value) -> (Option<String>, Option<String>, Vec<H
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
-    (quick_definition, headword, headword_groups)
+    ParsedDefinitions {
+        quick_definition,
+        headword,
+        headword_groups,
+    }
 }
 
 // -- Examples section parsing --
 
+/// Parses corpus examples from the SD_COMPONENT_DATA of the examples page.
 pub fn parse_examples(data: &Value) -> Vec<CorpusExample> {
     // The examples page stores data in explorationResponseFromServerEs
     // for Spanish words (source=Spanish, target=English).
-    // Each sentence has: source (Spanish with <em>), target (English with <em>), corpus, id
+    // Each sentence has: source (Spanish sentence), target (English sentence), corpus, id
     let sentences = data
         .pointer("/explorationResponseFromServerEs/data/data/sentences")
         .and_then(|v| v.as_array());

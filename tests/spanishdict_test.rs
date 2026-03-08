@@ -51,29 +51,29 @@ fn test_extract_sd_data_malformed_json() {
 fn test_parse_definitions_from_fixture() {
     let html = load_fixture("comer.html");
     let data = extract_sd_data(&html).unwrap();
-    let (quick_def, headword, headword_groups) = parse_definitions(&data);
+    let parsed = parse_definitions(&data);
 
-    assert!(quick_def.is_some());
-    assert_eq!(headword.as_deref(), Some("comer"));
-    assert!(!headword_groups.is_empty());
+    assert!(parsed.quick_definition.is_some());
+    assert_eq!(parsed.headword.as_deref(), Some("comer"));
+    assert!(!parsed.headword_groups.is_empty());
 
     // "comer" should have "to eat" as a translation
     let has_to_eat =
-        all_translations(&headword_groups).any(|t| t.text.to_lowercase().contains("to eat"));
+        all_translations(&parsed.headword_groups).any(|t| t.text.to_lowercase().contains("to eat"));
     assert!(has_to_eat, "Expected 'to eat' in definitions");
 
     // Should have some examples
-    let total_examples: usize = all_translations(&headword_groups)
+    let total_examples: usize = all_translations(&parsed.headword_groups)
         .map(|t| t.examples.len())
         .sum();
     assert!(total_examples > 0, "Expected at least one example sentence");
 
     // Should have POS labels
-    let first_pos = &headword_groups[0].pos_groups[0].pos_label;
+    let first_pos = &parsed.headword_groups[0].pos_groups[0].pos_label;
     assert!(!first_pos.is_empty(), "Expected POS label");
 
     // Senses should have indices
-    let first_sense = &headword_groups[0].pos_groups[0].senses[0];
+    let first_sense = &parsed.headword_groups[0].pos_groups[0].senses[0];
     // Sense index should exist (u32, so always >= 0)
     let _ = first_sense.index;
 }
@@ -87,9 +87,9 @@ fn test_parse_definitions_empty_neodict() {
             }
         }
     });
-    let (quick_def, _, headword_groups) = parse_definitions(&data);
-    assert!(quick_def.is_none());
-    assert!(headword_groups.is_empty());
+    let parsed = parse_definitions(&data);
+    assert!(parsed.quick_definition.is_none());
+    assert!(parsed.headword_groups.is_empty());
 }
 
 #[test]
@@ -109,9 +109,9 @@ fn test_parse_definitions_missing_fields() {
             }
         }
     });
-    let (_, _, headword_groups) = parse_definitions(&data);
-    assert_eq!(headword_groups.len(), 1);
-    let translation = &headword_groups[0].pos_groups[0].senses[0].translations[0];
+    let parsed = parse_definitions(&data);
+    assert_eq!(parsed.headword_groups.len(), 1);
+    let translation = &parsed.headword_groups[0].pos_groups[0].senses[0].translations[0];
     assert_eq!(translation.text, "to eat");
     assert!(translation.examples.is_empty());
 }
@@ -138,9 +138,9 @@ fn test_parse_definitions_with_context() {
             }
         }
     });
-    let (_, _, headword_groups) = parse_definitions(&data);
-    assert_eq!(headword_groups.len(), 1);
-    let sense = &headword_groups[0].pos_groups[0].senses[0];
+    let parsed = parse_definitions(&data);
+    assert_eq!(parsed.headword_groups.len(), 1);
+    let sense = &parsed.headword_groups[0].pos_groups[0].senses[0];
     assert_eq!(sense.context, "food");
     let translation = &sense.translations[0];
     assert_eq!(translation.text, "to eat");

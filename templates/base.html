@@ -18,13 +18,11 @@
         --bg: #fafaf8;
         --bg-input: #fff;
         --accent: #2c5282;
-        --accent-hover: #1a365d;
         --accent-light: #ebf4ff;
         --border: #ccc;
         --border-light: #eee;
         --green: #276d3d;
-        --btn: #2c5282;
-        --btn-hover: #1a365d;
+        --accent-solid: #2c5282;
       }
 
       @media (prefers-color-scheme: dark) {
@@ -35,13 +33,11 @@
           --bg: #1a1a1a;
           --bg-input: #2a2a2a;
           --accent: #7db4f0;
-          --accent-hover: #a0ccf5;
           --accent-light: #2a3a4a;
           --border: #444;
           --border-light: #333;
           --green: #6ec98b;
-          --btn: #3b6ba5;
-          --btn-hover: #5a9bd5;
+          --accent-solid: #3b6ba5;
         }
       }
 
@@ -88,9 +84,6 @@
         flex: 1;
         width: 100%;
       }
-      .flow > * + * {
-        margin-top: var(--flow-space, 1em);
-      }
       .cluster {
         display: flex;
         flex-wrap: wrap;
@@ -117,9 +110,6 @@
       }
       .text-xs {
         font-size: 0.85rem;
-      }
-      .text-2xs {
-        font-size: 0.75rem;
       }
       .italic {
         font-style: italic;
@@ -200,13 +190,9 @@
         margin: 0 auto;
       }
 
-      .results-header {
-        margin-bottom: 0;
-      }
       .results-header h1 {
         font-size: 1.8rem;
         font-weight: 400;
-        margin-bottom: 0;
       }
 
       .quick-def {
@@ -307,9 +293,9 @@
       /* === Exceptions === */
 
       .filter-tag[data-state="active"] {
-        background: var(--btn);
+        background: var(--accent-solid);
         color: #fff;
-        border-color: var(--btn);
+        border-color: var(--accent-solid);
       }
     </style>
   </head>
