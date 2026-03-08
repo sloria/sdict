@@ -12,7 +12,7 @@ static SD_DATA_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"SD_COMPONENT_DATA = (\{.*?\});").unwrap());
 static SCRIPT_SELECTOR: LazyLock<Selector> = LazyLock::new(|| Selector::parse("script").unwrap());
 
-/// Look up a term on SpanishDict and return its definitions and examples
+/// Looks up a term on SpanishDict and return its definitions and examples
 pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Term, SdictError> {
     tracing::info!(term = %term, "looking up term");
     let url = format!("{base_url}/translate/{term}");
@@ -143,7 +143,7 @@ pub struct FilterTag {
     pub count: usize,
 }
 
-/// Extract filter tags from corpus examples by counting the text inside `<em>` tags
+/// Extracts filter tags from corpus examples by counting the text inside `<em>` tags
 /// in the English translations. Returns tags sorted by count descending.
 pub fn extract_filter_tags(examples: &[CorpusExample]) -> Vec<FilterTag> {
     let mut counts: HashMap<String, usize> = HashMap::new();
@@ -167,7 +167,7 @@ pub fn extract_filter_tags(examples: &[CorpusExample]) -> Vec<FilterTag> {
     tags
 }
 
-/// Filter corpus examples to only those whose English text contains
+/// Filters corpus examples to only those whose English text contains
 /// `<em>{tag}</em>` (case-insensitive).
 pub fn filter_examples(examples: &[CorpusExample], tag: &str) -> Vec<CorpusExample> {
     let tag_lower = tag.to_lowercase();
@@ -190,7 +190,7 @@ static HTML_SANITIZER: LazyLock<Builder<'static>> = LazyLock::new(|| {
     builder
 });
 
-/// Sanitize HTML, allowing only `<em>` tags (used by SpanishDict to highlight
+/// Sanitizes HTML, allowing only `<em>` tags (used by SpanishDict to highlight
 /// the search term in corpus examples). All other tags are stripped.
 fn sanitize_html(s: &str) -> String {
     HTML_SANITIZER.clean(s).to_string()
@@ -216,6 +216,8 @@ pub async fn fetch_page(client: &Client, url: &str) -> Result<String, SdictError
     Ok(response.text().await?)
 }
 
+/// Extracts the SD_COMPONENT_DATA JSON object from the HTML, which contains
+/// all the data needed to parse the definitions and examples.
 pub fn extract_sd_data(html: &str) -> Result<Value, SdictError> {
     let document = Html::parse_document(html);
 
@@ -239,6 +241,8 @@ pub fn extract_sd_data(html: &str) -> Result<Value, SdictError> {
 
 // -- Definition parsing --
 
+/// Helper to extract an array of strings from a JSON value
+/// Example: {"regionsDisplay": ["Spain", "Mexico"]} -> vec!["Spain", "Mexico"]
 fn extract_string_array(value: &Value, key: &str) -> Vec<String> {
     value
         .get(key)
@@ -251,6 +255,8 @@ fn extract_string_array(value: &Value, key: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// Parses the definitions from the SD_COMPONENT_DATA JSON. Returns a tuple of
+/// (quick_definition, headword, headword_groups).
 pub fn parse_definitions(data: &Value) -> (Option<String>, Option<String>, Vec<HeadwordGroup>) {
     let neodict = data
         .pointer("/sdDictionaryResultsProps/entry/neodict")
