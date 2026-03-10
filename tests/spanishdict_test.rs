@@ -153,32 +153,32 @@ fn test_parse_definitions_with_context() {
 fn test_parse_examples_from_fixture() {
     let html = load_fixture("comer_examples.html");
     let data = extract_sd_data(&html).unwrap();
-    let examples = parse_examples(&data);
+    let examples = parse_examples(&data, "es");
 
     assert!(!examples.is_empty());
 
     // First example should match what we saw in the data
     let first = &examples[0];
-    assert!(first.spanish.contains("comer"));
-    assert!(!first.english.is_empty());
+    assert!(first.source.contains("comer"));
+    assert!(!first.target.is_empty());
     // Should contain <em> tags for highlighting
-    assert!(first.spanish.contains("<em>"));
+    assert!(first.source.contains("<em>"));
 }
 
 #[test]
 fn test_extract_filter_tags() {
     let examples = vec![
         CorpusExample {
-            spanish: "Vamos a <em>comer</em>.".to_string(),
-            english: "Let's <em>eat</em>.".to_string(),
+            source: "Vamos a <em>comer</em>.".to_string(),
+            target: "Let's <em>eat</em>.".to_string(),
         },
         CorpusExample {
-            spanish: "La hora de <em>comer</em>.".to_string(),
-            english: "The <em>lunch</em> hour.".to_string(),
+            source: "La hora de <em>comer</em>.".to_string(),
+            target: "The <em>lunch</em> hour.".to_string(),
         },
         CorpusExample {
-            spanish: "Quiero <em>comer</em> algo.".to_string(),
-            english: "I want to <em>eat</em> something.".to_string(),
+            source: "Quiero <em>comer</em> algo.".to_string(),
+            target: "I want to <em>eat</em> something.".to_string(),
         },
     ];
     let tags = extract_filter_tags(&examples);
@@ -192,21 +192,21 @@ fn test_extract_filter_tags() {
 fn test_filter_examples() {
     let examples = vec![
         CorpusExample {
-            spanish: "Vamos a <em>comer</em>.".to_string(),
-            english: "Let's <em>eat</em>.".to_string(),
+            source: "Vamos a <em>comer</em>.".to_string(),
+            target: "Let's <em>eat</em>.".to_string(),
         },
         CorpusExample {
-            spanish: "La hora de <em>comer</em>.".to_string(),
-            english: "The <em>lunch</em> hour.".to_string(),
+            source: "La hora de <em>comer</em>.".to_string(),
+            target: "The <em>lunch</em> hour.".to_string(),
         },
     ];
     let filtered = filter_examples(&examples, "eat");
     assert_eq!(filtered.len(), 1);
-    assert!(filtered[0].english.contains("eat"));
+    assert!(filtered[0].target.contains("eat"));
 
     let filtered = filter_examples(&examples, "lunch");
     assert_eq!(filtered.len(), 1);
-    assert!(filtered[0].english.contains("lunch"));
+    assert!(filtered[0].target.contains("lunch"));
 
     let filtered = filter_examples(&examples, "nonexistent");
     assert!(filtered.is_empty());
@@ -216,7 +216,7 @@ fn test_filter_examples() {
 fn test_extract_filter_tags_from_fixture() {
     let html = load_fixture("comer_examples.html");
     let data = extract_sd_data(&html).unwrap();
-    let examples = parse_examples(&data);
+    let examples = parse_examples(&data, "es");
     let tags = extract_filter_tags(&examples);
 
     assert!(!tags.is_empty());
@@ -234,7 +234,7 @@ fn test_extract_filter_tags_from_fixture() {
 #[test]
 fn test_parse_examples_missing_key() {
     let data = serde_json::json!({});
-    let examples = parse_examples(&data);
+    let examples = parse_examples(&data, "es");
     assert!(examples.is_empty());
 }
 
