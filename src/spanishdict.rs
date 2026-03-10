@@ -28,10 +28,14 @@ pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Te
         return Err(SdictError::NotFound(term.to_string()));
     }
 
-    // Parse examples from the already-fetched examples page (best-effort)
+    let lang_from = parsed.lang_from.as_deref().unwrap_or("es");
+
+    // Parse examples from the already-fetched examples page (best-effort).
+    // The examples page contains data for both language directions regardless
+    // of the ?lang= parameter, so we use lang_from to select the right key.
     let examples = match examples_html_result {
         Ok(examples_html) => match extract_sd_data(&examples_html) {
-            Ok(examples_data) => parse_examples(&examples_data),
+            Ok(examples_data) => parse_examples(&examples_data, lang_from),
             Err(e) => {
                 tracing::warn!(term = %term, error = %e, "failed to parse examples page");
                 Vec::new()
@@ -45,6 +49,7 @@ pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Te
 
     tracing::debug!(
         term = %term,
+        lang_from = %lang_from,
         headword_groups = parsed.headword_groups.len(),
         examples = examples.len(),
         "lookup complete"
@@ -56,6 +61,7 @@ pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Te
         quick_definition: parsed.quick_definition,
         headword_groups: parsed.headword_groups,
         examples,
+        lang_from: lang_from.to_string(),
     })
 }
 
@@ -92,6 +98,7 @@ pub struct Term {
     pub quick_definition: Option<String>,
     pub headword_groups: Vec<HeadwordGroup>,
     pub examples: Vec<CorpusExample>,
+    pub lang_from: String,
 }
 
 #[derive(Debug, Clone)]
@@ -128,12 +135,13 @@ pub struct ExampleSentence {
 }
 
 /// An example from the corpus (separate from per-definition examples).
-/// `spanish` and `english` may contain `<em>` tags for highlighting the search term.
+/// `source` is in the searched language, `target` is the translation.
+/// Both may contain `<em>` tags for highlighting the search term.
 /// All other HTML tags are stripped at parse time.
 #[derive(Debug, Clone)]
 pub struct CorpusExample {
-    pub spanish: String,
-    pub english: String,
+    pub source: String,
+    pub target: String,
 }
 
 #[derive(Debug, Clone)]
@@ -141,6 +149,8 @@ pub struct ParsedDefinitions {
     pub quick_definition: Option<String>,
     pub headword: Option<String>,
     pub headword_groups: Vec<HeadwordGroup>,
+    /// Language of the search term: "es" or "en"
+    pub lang_from: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -150,13 +160,13 @@ pub struct FilterTag {
 }
 
 /// Extracts filter tags from corpus examples by counting the text inside `<em>` tags
-/// in the English translations. Returns tags sorted by count descending.
+/// in the target (translation) text. Returns tags sorted by count descending.
 pub fn extract_filter_tags(examples: &[CorpusExample]) -> Vec<FilterTag> {
     let mut counts: HashMap<String, usize> = HashMap::new();
 
     for ex in examples {
         let mut seen = HashSet::new();
-        for caps in EM_RE.captures_iter(&ex.english) {
+        for caps in EM_RE.captures_iter(&ex.target) {
             let text = caps[1].to_lowercase();
             if seen.insert(text.clone()) {
                 *counts.entry(text).or_insert(0) += 1;
@@ -173,7 +183,7 @@ pub fn extract_filter_tags(examples: &[CorpusExample]) -> Vec<FilterTag> {
     tags
 }
 
-/// Filters corpus examples to only those whose English text contains
+/// Filters corpus examples to only those whose target (translation) text contains
 /// `<em>{tag}</em>` (case-insensitive).
 pub fn filter_examples(examples: &[CorpusExample], tag: &str) -> Vec<CorpusExample> {
     let tag_lower = tag.to_lowercase();
@@ -181,7 +191,7 @@ pub fn filter_examples(examples: &[CorpusExample], tag: &str) -> Vec<CorpusExamp
         .iter()
         .filter(|ex| {
             EM_RE
-                .captures_iter(&ex.english)
+                .captures_iter(&ex.target)
                 .any(|caps| caps[1].to_lowercase() == tag_lower)
         })
         .cloned()
@@ -392,41 +402,49 @@ pub fn parse_definitions(data: &Value) -> ParsedDefinitions {
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
+    let lang_from = data
+        .get("langFrom")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
     ParsedDefinitions {
         quick_definition,
         headword,
         headword_groups,
+        lang_from,
     }
 }
 
 // -- Examples section parsing --
 
 /// Parses corpus examples from the SD_COMPONENT_DATA of the examples page.
-pub fn parse_examples(data: &Value) -> Vec<CorpusExample> {
-    // The examples page stores data in explorationResponseFromServerEs
-    // for Spanish words (source=Spanish, target=English).
-    // Each sentence has: source (Spanish sentence), target (English sentence), corpus, id
-    let sentences = data
-        .pointer("/explorationResponseFromServerEs/data/data/sentences")
-        .and_then(|v| v.as_array());
+/// `lang` should be "es" or "en" to match the `?lang=` query parameter used to fetch the page.
+/// The JSON key is `explorationResponseFromServerEs` for `lang=es`
+/// and `explorationResponseFromServerEn` for `lang=en`.
+pub fn parse_examples(data: &Value, lang: &str) -> Vec<CorpusExample> {
+    let json_key = match lang {
+        "en" => "/explorationResponseFromServerEn/data/data/sentences",
+        _ => "/explorationResponseFromServerEs/data/data/sentences",
+    };
+    let sentences = data.pointer(json_key).and_then(|v| v.as_array());
 
     let mut examples = Vec::new();
     if let Some(sentences) = sentences {
         for sentence in sentences {
-            let spanish = sentence
+            let source = sentence
                 .get("source")
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
-            let english = sentence
+            let target = sentence
                 .get("target")
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
-            if !spanish.is_empty() && !english.is_empty() {
+            if !source.is_empty() && !target.is_empty() {
                 examples.push(CorpusExample {
-                    spanish: sanitize_html(&spanish),
-                    english: sanitize_html(&english),
+                    source: sanitize_html(&source),
+                    target: sanitize_html(&target),
                 });
             }
         }

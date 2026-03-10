@@ -79,8 +79,13 @@
      allow <em> tags; all other HTML is stripped. #}
   {% for ex in filtered_examples %}
   <div class="corpus-example">
-    <div lang="es">{{ ex.spanish|safe }}</div>
-    <div class="color-secondary">{{ ex.english|safe }}</div>
+    {% if term.lang_from == "en" %}
+    <div>{{ ex.source|safe }}</div>
+    <div lang="es" class="color-secondary">{{ ex.target|safe }}</div>
+    {% else %}
+    <div lang="es">{{ ex.source|safe }}</div>
+    <div class="color-secondary">{{ ex.target|safe }}</div>
+    {% endif %}
   </div>
   {% endfor %}
 </div>
