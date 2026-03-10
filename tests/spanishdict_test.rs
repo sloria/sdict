@@ -53,7 +53,7 @@ fn test_parse_definitions_from_fixture() {
     let data = extract_sd_data(&html).unwrap();
     let parsed = parse_definitions(&data);
 
-    assert!(parsed.quick_definition.is_some());
+    assert!(!parsed.quick_definitions.is_empty());
     assert_eq!(parsed.headword.as_deref(), Some("comer"));
     assert!(!parsed.headword_groups.is_empty());
 
@@ -88,7 +88,7 @@ fn test_parse_definitions_empty_neodict() {
         }
     });
     let parsed = parse_definitions(&data);
-    assert!(parsed.quick_definition.is_none());
+    assert!(parsed.quick_definitions.is_empty());
     assert!(parsed.headword_groups.is_empty());
 }
 
@@ -266,7 +266,7 @@ async fn test_translate_with_wiremock() {
 
     assert_eq!(term.query, "comer");
     assert_eq!(term.headword, "comer");
-    assert!(term.quick_definition.is_some());
+    assert!(!term.quick_definitions.is_empty());
     assert!(!term.headword_groups.is_empty());
     assert!(!term.examples.is_empty());
 }

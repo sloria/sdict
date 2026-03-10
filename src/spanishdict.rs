@@ -58,7 +58,7 @@ pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Te
     Ok(Term {
         query: term.to_string(),
         headword: parsed.headword.unwrap_or_else(|| term.to_string()),
-        quick_definition: parsed.quick_definition,
+        quick_definitions: parsed.quick_definitions,
         headword_groups: parsed.headword_groups,
         examples,
         lang_from: lang_from.to_string(),
@@ -95,7 +95,7 @@ impl From<reqwest::Error> for SdictError {
 pub struct Term {
     pub query: String,
     pub headword: String,
-    pub quick_definition: Option<String>,
+    pub quick_definitions: Vec<String>,
     pub headword_groups: Vec<HeadwordGroup>,
     pub examples: Vec<CorpusExample>,
     pub lang_from: String,
@@ -146,7 +146,7 @@ pub struct CorpusExample {
 
 #[derive(Debug, Clone)]
 pub struct ParsedDefinitions {
-    pub quick_definition: Option<String>,
+    pub quick_definitions: Vec<String>,
     pub headword: Option<String>,
     pub headword_groups: Vec<HeadwordGroup>,
     /// Language of the search term: "es" or "en"
@@ -384,18 +384,25 @@ pub fn parse_definitions(data: &Value) -> ParsedDefinitions {
         }
     }
 
-    let quick_definition = data
-        .pointer("/resultCardHeaderProps/headwordAndQuickdefsProps/quickdef1/displayText")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string())
-        .or_else(|| {
-            headword_groups
-                .first()
-                .and_then(|hw| hw.pos_groups.first())
-                .and_then(|pg| pg.senses.first())
-                .and_then(|s| s.translations.first())
-                .map(|t| t.text.clone())
-        });
+    let quickdefs_base = "/resultCardHeaderProps/headwordAndQuickdefsProps";
+    let mut quick_definitions: Vec<String> = ["quickdef1", "quickdef2"]
+        .iter()
+        .filter_map(|key| {
+            data.pointer(&format!("{quickdefs_base}/{key}/displayText"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        })
+        .collect();
+    if quick_definitions.is_empty()
+        && let Some(fallback) = headword_groups
+            .first()
+            .and_then(|hw| hw.pos_groups.first())
+            .and_then(|pg| pg.senses.first())
+            .and_then(|s| s.translations.first())
+            .map(|t| t.text.clone())
+    {
+        quick_definitions.push(fallback);
+    }
 
     let headword = data
         .pointer("/resultCardHeaderProps/headwordAndQuickdefsProps/headword/displayText")
@@ -408,7 +415,7 @@ pub fn parse_definitions(data: &Value) -> ParsedDefinitions {
         .map(|s| s.to_string());
 
     ParsedDefinitions {
-        quick_definition,
+        quick_definitions,
         headword,
         headword_groups,
         lang_from,

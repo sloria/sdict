@@ -7,9 +7,9 @@
   <h1>{{ term.headword }}</h1>
 </div>
 
-{% if let Some(qd) = term.quick_definition %}
-<p class="quick-def color-secondary">{{ qd }}</p>
-{% endif %} {% for hw in term.headword_groups %}
+{% for qd in term.quick_definitions %}
+<p class="quick-def color-secondary"><a href="/translate/{{ qd|urlencode }}">{{ qd }}</a></p>
+{% endfor %} {% for hw in term.headword_groups %}
 {% if term.headword_groups.len() > 1 %}
 <h2 class="subheadword">{{ hw.subheadword }}</h2>
 {% endif %}
