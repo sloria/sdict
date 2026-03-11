@@ -3,6 +3,21 @@
 <a href="/" class="site-name">sdict</a>
 {% include "_search_form.html" %}
 
+{% if term.has_both_langs %}
+<div class="cluster text-s">
+  {% if term.lang_from == "en" %}
+    <span class="font-semibold">English to Spanish</span>
+  {% else %}
+    <a href="/translate/{{ term.query|urlencode }}?langFrom=en">English to Spanish</a>
+  {% endif %}
+  {% if term.lang_from == "es" %}
+    <span class="font-semibold">Spanish to English</span>
+  {% else %}
+    <a href="/translate/{{ term.query|urlencode }}?langFrom=es">Spanish to English</a>
+  {% endif %}
+</div>
+{% endif %}
+
 <div class="results-header">
   <h1>{{ term.headword }}</h1>
 </div>
@@ -57,18 +72,20 @@
 <div class="examples-section" id="examples">
   <h2>Examples</h2>
   {% if !filter_tags.is_empty() %}
+  {% let active_lang = active_lang_from.as_deref() %}
+  {% let active_filter_label = active_filter.as_deref() %}
   <div class="filter-tags cluster">
     <a
-      href="/translate/{{ term.query }}#examples"
+      href="/translate/{{ term.query }}{% if let Some(lang) = active_lang %}?langFrom={{ lang }}{% endif %}#examples"
       class="filter-tag"
-      {% if active_filter.is_none() %}data-state="active"{% endif %}
+      {% if active_filter_label.is_none() %}data-state="active"{% endif %}
       >all</a
     >
     {% for tag in filter_tags %}
     <a
-      href="/translate/{{ term.query }}?filter={{ tag.label|urlencode }}#examples"
+      href="/translate/{{ term.query }}?{% if let Some(lang) = active_lang %}langFrom={{ lang }}&{% endif %}filter={{ tag.label|urlencode }}#examples"
       class="filter-tag"
-      {% if active_filter.as_deref() == Some(tag.label.as_str()) %}data-state="active"{% endif %}
+      {% if active_filter_label == Some(tag.label.as_str()) %}data-state="active"{% endif %}
       >{{ tag.label }} ({{ tag.count }})</a
     >
     {% endfor %}

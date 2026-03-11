@@ -47,6 +47,7 @@ struct ResultsTemplate {
     term: spanishdict::Term,
     filter_tags: Vec<spanishdict::FilterTag>,
     active_filter: Option<String>,
+    active_lang_from: Option<String>,
     filtered_examples: Vec<spanishdict::CorpusExample>,
 }
 
@@ -84,6 +85,8 @@ pub struct SearchForm {
 #[derive(Deserialize)]
 pub struct TranslateQuery {
     pub filter: Option<String>,
+    #[serde(rename = "langFrom")]
+    pub lang_from: Option<String>,
 }
 
 // --- Handlers ---
@@ -133,7 +136,14 @@ async fn translate(
         }
         .into_response();
     }
-    match spanishdict::translate(&state.client, &state.base_url, &term).await {
+    match spanishdict::translate(
+        &state.client,
+        &state.base_url,
+        &term,
+        query.lang_from.as_deref(),
+    )
+    .await
+    {
         Ok(term) => {
             let filter_tags = spanishdict::extract_filter_tags(&term.examples);
             let filtered_examples = match &query.filter {
@@ -149,6 +159,7 @@ async fn translate(
                 term,
                 filter_tags,
                 active_filter: query.filter,
+                active_lang_from: query.lang_from,
                 filtered_examples,
             }
             .into_response()

@@ -76,6 +76,10 @@ fn test_parse_definitions_from_fixture() {
     let first_sense = &parsed.headword_groups[0].pos_groups[0].senses[0];
     // Sense index should exist (u32, so always >= 0)
     let _ = first_sense.index;
+
+    // comer fixture has hasBothLangs: true and langFrom: "es"
+    assert!(parsed.has_both_langs);
+    assert_eq!(parsed.lang_from.as_deref(), Some("es"));
 }
 
 #[test]
@@ -90,6 +94,7 @@ fn test_parse_definitions_empty_neodict() {
     let parsed = parse_definitions(&data);
     assert!(parsed.quick_definitions.is_empty());
     assert!(parsed.headword_groups.is_empty());
+    assert!(!parsed.has_both_langs);
 }
 
 #[test]
@@ -261,7 +266,7 @@ async fn test_translate_with_wiremock() {
         .await;
 
     let client = Client::new();
-    let result = translate(&client, &mock_server.uri(), "comer").await;
+    let result = translate(&client, &mock_server.uri(), "comer", None).await;
     let term = result.unwrap();
 
     assert_eq!(term.query, "comer");
@@ -288,7 +293,7 @@ async fn test_translate_not_found() {
         .await;
 
     let client = Client::new();
-    let result = translate(&client, &mock_server.uri(), "xyznotaword").await;
+    let result = translate(&client, &mock_server.uri(), "xyznotaword", None).await;
     assert!(matches!(result, Err(SdictError::NotFound(_))));
 }
 
@@ -314,7 +319,7 @@ async fn test_translate_term_with_accent() {
         .await;
 
     let client = Client::new();
-    let result = translate(&client, &mock_server.uri(), "común")
+    let result = translate(&client, &mock_server.uri(), "común", None)
         .await
         .unwrap();
     assert_eq!(result.query, "común");
@@ -343,7 +348,7 @@ async fn test_translate_term_with_spaces() {
         .await;
 
     let client = Client::new();
-    let result = translate(&client, &mock_server.uri(), "buenos días")
+    let result = translate(&client, &mock_server.uri(), "buenos días", None)
         .await
         .unwrap();
     assert_eq!(result.query, "buenos días");
@@ -364,6 +369,6 @@ async fn test_translate_fetch_error() {
         .await;
 
     let client = Client::new();
-    let result = translate(&client, &mock_server.uri(), "broken").await;
+    let result = translate(&client, &mock_server.uri(), "broken", None).await;
     assert!(matches!(result, Err(SdictError::Fetch(_))));
 }

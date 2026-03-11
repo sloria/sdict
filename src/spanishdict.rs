@@ -12,16 +12,21 @@ static SD_DATA_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"SD_COMPONENT_DATA = (\{.*?\});").unwrap());
 
 /// Looks up a term on SpanishDict and return its definitions and examples
-pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Term, SdictError> {
-    tracing::info!(term = %term, "looking up term");
-    let url = format!("{base_url}/translate/{term}");
-    let examples_url = format!("{base_url}/examples/{term}?lang=es");
+pub async fn translate(
+    client: &Client,
+    base_url: &str,
+    term: &str,
+    lang_from: Option<&str>,
+) -> Result<Term, SdictError> {
+    tracing::info!(term, lang_from, "looking up term");
+    let url = match lang_from {
+        Some(lang) => format!("{base_url}/translate/{term}?langFrom={lang}"),
+        None => format!("{base_url}/translate/{term}"),
+    };
 
-    // Fetch both pages in parallel
-    let (html_result, examples_html_result) =
-        tokio::join!(fetch_page(client, &url), fetch_page(client, &examples_url));
-
-    let html = html_result?;
+    // Fetch the definitions page first to determine lang_from,
+    // then fetch examples with the correct ?lang= parameter.
+    let html = fetch_page(client, &url).await?;
     let data = extract_sd_data(&html)?;
     let parsed = parse_definitions(&data);
     if parsed.headword_groups.is_empty() {
@@ -29,11 +34,12 @@ pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Te
     }
 
     let lang_from = parsed.lang_from.as_deref().unwrap_or("es");
+    let examples_url = format!("{base_url}/examples/{term}?lang={lang_from}");
 
-    // Parse examples from the already-fetched examples page (best-effort).
+    // Fetch and parse examples
     // The examples page contains data for both language directions regardless
     // of the ?lang= parameter, so we use lang_from to select the right key.
-    let examples = match examples_html_result {
+    let examples = match fetch_page(client, &examples_url).await {
         Ok(examples_html) => match extract_sd_data(&examples_html) {
             Ok(examples_data) => parse_examples(&examples_data, lang_from),
             Err(e) => {
@@ -62,6 +68,7 @@ pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Te
         headword_groups: parsed.headword_groups,
         examples,
         lang_from: lang_from.to_string(),
+        has_both_langs: parsed.has_both_langs,
     })
 }
 
@@ -99,6 +106,7 @@ pub struct Term {
     pub headword_groups: Vec<HeadwordGroup>,
     pub examples: Vec<CorpusExample>,
     pub lang_from: String,
+    pub has_both_langs: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -151,6 +159,8 @@ pub struct ParsedDefinitions {
     pub headword_groups: Vec<HeadwordGroup>,
     /// Language of the search term: "es" or "en"
     pub lang_from: Option<String>,
+    /// Whether the term has definitions in both language directions
+    pub has_both_langs: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -414,11 +424,17 @@ pub fn parse_definitions(data: &Value) -> ParsedDefinitions {
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
+    let has_both_langs = data
+        .get("hasBothLangs")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
     ParsedDefinitions {
         quick_definitions,
         headword,
         headword_groups,
         lang_from,
+        has_both_langs,
     }
 }
 
