@@ -12,16 +12,21 @@ static SD_DATA_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"SD_COMPONENT_DATA = (\{.*?\});").unwrap());
 
 /// Looks up a term on SpanishDict and return its definitions and examples
-pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Term, SdictError> {
-    tracing::info!(term = %term, "looking up term");
-    let url = format!("{base_url}/translate/{term}");
-    let examples_url = format!("{base_url}/examples/{term}?lang=es");
+pub async fn translate(
+    client: &Client,
+    base_url: &str,
+    term: &str,
+    lang_from: Option<&str>,
+) -> Result<Term, SdictError> {
+    tracing::info!(term, lang_from, "looking up term");
+    let url = match lang_from {
+        Some(lang) => format!("{base_url}/translate/{term}?langFrom={lang}"),
+        None => format!("{base_url}/translate/{term}"),
+    };
 
-    // Fetch both pages in parallel
-    let (html_result, examples_html_result) =
-        tokio::join!(fetch_page(client, &url), fetch_page(client, &examples_url));
-
-    let html = html_result?;
+    // Fetch the definitions page first to determine lang_from,
+    // then fetch examples with the correct ?lang=
+    let html = fetch_page(client, &url).await?;
     let data = extract_sd_data(&html)?;
     let parsed = parse_definitions(&data);
     if parsed.headword_groups.is_empty() {
@@ -29,29 +34,30 @@ pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Te
     }
 
     let lang_from = parsed.lang_from.as_deref().unwrap_or("es");
+    let examples_url = format!("{base_url}/examples/{term}?lang={lang_from}");
 
-    // Parse examples from the already-fetched examples page (best-effort).
+    // Fetch and parse examples
     // The examples page contains data for both language directions regardless
-    // of the ?lang= parameter, so we use lang_from to select the right key.
-    let examples = match examples_html_result {
+    // of the ?lang= parameter, so we use lang_from to select the right language
+    let examples = match fetch_page(client, &examples_url).await {
         Ok(examples_html) => match extract_sd_data(&examples_html) {
             Ok(examples_data) => parse_examples(&examples_data, lang_from),
             Err(e) => {
-                tracing::warn!(term = %term, error = %e, "failed to parse examples page");
+                tracing::warn!(term, error = %e, "failed to parse examples page");
                 Vec::new()
             }
         },
         Err(e) => {
-            tracing::warn!(word = %term, error = %e, "failed to fetch examples page");
+            tracing::warn!(term, error = %e, "failed to fetch examples page");
             Vec::new()
         }
     };
 
     tracing::debug!(
-        term = %term,
-        lang_from = %lang_from,
-        headword_groups = parsed.headword_groups.len(),
-        examples = examples.len(),
+        term,
+        lang_from,
+        n_headword_groups = parsed.headword_groups.len(),
+        n_examples = examples.len(),
         "lookup complete"
     );
 
@@ -62,6 +68,7 @@ pub async fn translate(client: &Client, base_url: &str, term: &str) -> Result<Te
         headword_groups: parsed.headword_groups,
         examples,
         lang_from: lang_from.to_string(),
+        has_both_langs: parsed.has_both_langs,
     })
 }
 
@@ -99,6 +106,7 @@ pub struct Term {
     pub headword_groups: Vec<HeadwordGroup>,
     pub examples: Vec<CorpusExample>,
     pub lang_from: String,
+    pub has_both_langs: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -151,6 +159,8 @@ pub struct ParsedDefinitions {
     pub headword_groups: Vec<HeadwordGroup>,
     /// Language of the search term: "es" or "en"
     pub lang_from: Option<String>,
+    /// Whether the term has definitions in both language directions
+    pub has_both_langs: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -217,7 +227,6 @@ fn sanitize_html(s: &str) -> String {
 const USER_AGENT: &str = "sdict (+https://github.com/sloria/sdict)";
 
 pub async fn fetch_page(client: &Client, url: &str) -> Result<String, SdictError> {
-    tracing::debug!(url = %url, "fetching page");
     let response = client
         .get(url)
         .header("User-Agent", USER_AGENT)
@@ -226,7 +235,7 @@ pub async fn fetch_page(client: &Client, url: &str) -> Result<String, SdictError
         .await?;
     let status = response.status();
     if !status.is_success() {
-        tracing::warn!(url = %url, status = %status, "non-success status");
+        tracing::warn!(url, status = %status, "non-success status");
     }
     let response = response.error_for_status().map_err(SdictError::Fetch)?;
     Ok(response.text().await?)
@@ -414,11 +423,17 @@ pub fn parse_definitions(data: &Value) -> ParsedDefinitions {
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
+    let has_both_langs = data
+        .get("hasBothLangs")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
     ParsedDefinitions {
         quick_definitions,
         headword,
         headword_groups,
         lang_from,
+        has_both_langs,
     }
 }
 

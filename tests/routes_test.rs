@@ -5,11 +5,11 @@ use axum::{
 use reqwest::Client;
 use sdict::{AppState, build_router};
 use tower::ServiceExt;
-use wiremock::matchers::{method, path};
+use wiremock::matchers::{method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn load_fixture(name: &str) -> String {
-    std::fs::read_to_string(format!("tests/fixtures/{name}")).expect("fixture file exists")
+    std::fs::read_to_string(format!("tests/fixtures/{name}")).expect("fixture file should exist")
 }
 
 fn app(base_url: &str) -> axum::Router {
@@ -151,6 +151,49 @@ async fn test_translate_success() {
     // Should have filter tags
     assert!(html.contains("filter-tag"));
     assert!(html.contains("Examples"));
+    // comer fixture has hasBothLangs=true, so language switcher should appear
+    assert!(html.contains("Spanish to English"));
+    assert!(html.contains("English to Spanish"));
+    // "English to Spanish" is a link
+    assert!(html.contains("?langFrom=en"));
+}
+
+#[tokio::test]
+async fn test_translate_with_lang_from() {
+    let mock_server = MockServer::start().await;
+
+    // langFrom=en is passed -> should be forwarded SpanishDict
+    Mock::given(method("GET"))
+        .and(path("/translate/comer"))
+        .and(query_param("langFrom", "en"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(load_fixture("comer.html")))
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path("/examples/comer"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_string(load_fixture("comer_examples.html")),
+        )
+        .mount(&mock_server)
+        .await;
+
+    let response = app(&mock_server.uri())
+        .oneshot(
+            Request::builder()
+                .uri("/translate/comer?langFrom=en")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let html = String::from_utf8(body.to_vec()).unwrap();
+    assert!(html.contains("comer"));
 }
 
 #[tokio::test]
