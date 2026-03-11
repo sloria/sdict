@@ -25,7 +25,7 @@ pub async fn translate(
     };
 
     // Fetch the definitions page first to determine lang_from,
-    // then fetch examples with the correct ?lang= parameter.
+    // then fetch examples with the correct ?lang=
     let html = fetch_page(client, &url).await?;
     let data = extract_sd_data(&html)?;
     let parsed = parse_definitions(&data);
@@ -38,26 +38,26 @@ pub async fn translate(
 
     // Fetch and parse examples
     // The examples page contains data for both language directions regardless
-    // of the ?lang= parameter, so we use lang_from to select the right key.
+    // of the ?lang= parameter, so we use lang_from to select the right language
     let examples = match fetch_page(client, &examples_url).await {
         Ok(examples_html) => match extract_sd_data(&examples_html) {
             Ok(examples_data) => parse_examples(&examples_data, lang_from),
             Err(e) => {
-                tracing::warn!(term = %term, error = %e, "failed to parse examples page");
+                tracing::warn!(term, error = %e, "failed to parse examples page");
                 Vec::new()
             }
         },
         Err(e) => {
-            tracing::warn!(word = %term, error = %e, "failed to fetch examples page");
+            tracing::warn!(term, error = %e, "failed to fetch examples page");
             Vec::new()
         }
     };
 
     tracing::debug!(
-        term = %term,
-        lang_from = %lang_from,
-        headword_groups = parsed.headword_groups.len(),
-        examples = examples.len(),
+        term,
+        lang_from,
+        n_headword_groups = parsed.headword_groups.len(),
+        n_examples = examples.len(),
         "lookup complete"
     );
 
@@ -227,7 +227,6 @@ fn sanitize_html(s: &str) -> String {
 const USER_AGENT: &str = "sdict (+https://github.com/sloria/sdict)";
 
 pub async fn fetch_page(client: &Client, url: &str) -> Result<String, SdictError> {
-    tracing::debug!(url = %url, "fetching page");
     let response = client
         .get(url)
         .header("User-Agent", USER_AGENT)
@@ -236,7 +235,7 @@ pub async fn fetch_page(client: &Client, url: &str) -> Result<String, SdictError
         .await?;
     let status = response.status();
     if !status.is_success() {
-        tracing::warn!(url = %url, status = %status, "non-success status");
+        tracing::warn!(url, status = %status, "non-success status");
     }
     let response = response.error_for_status().map_err(SdictError::Fetch)?;
     Ok(response.text().await?)
