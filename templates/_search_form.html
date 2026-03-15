@@ -1,4 +1,9 @@
 <form class="search-form cluster" action="/search" method="post">
+  <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="8"></circle>
+    <path d="m21 21-4.35-4.35"></path>
+  </svg>
+
   <input
     type="text"
     name="term"
@@ -8,10 +13,13 @@
     aria-label="Search for a Spanish or English word"
     {% if search.autofocus %}autofocus{% endif %}
   />
-  <button type="submit" aria-label="Search">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <circle cx="11" cy="11" r="8"></circle>
-      <path d="m21 21-4.35-4.35"></path>
+
+  <button type="button" class="clear" aria-label="Clear search" hidden>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M18 6 6 18"></path>
+      <path d="m6 6 12 12"></path>
     </svg>
   </button>
+
+  <button type="submit" class="sr-only" aria-label="Search" tabindex="-1">Search</button>
 </form>
