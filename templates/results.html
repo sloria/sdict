@@ -29,10 +29,10 @@
 <h2 class="subheadword">{{ hw.subheadword }}</h2>
 {% endif %}
 {% for pg in hw.pos_groups %}
-<div class="pos-group">
+<div class="pos-group flow">
   <div class="uppercase-label color-faint">{{ pg.pos_label }}</div>
   {% for sense in pg.senses %}
-  <div class="sense">
+  <div class="sense flow">
     <div class="sense-header">
       <span class="font-semibold">{{ sense.index }}.</span>
       <span class="color-green"> 
@@ -69,7 +69,7 @@
 </div>
 {% endfor %}
 {% endfor %} {% if !term.examples.is_empty() %}
-<div class="examples-section" id="examples">
+<div class="examples-section flow" id="examples">
   <h2>Examples</h2>
   {% if !filter_tags.is_empty() %}
   {% let active_lang = active_lang_from.as_deref() %}

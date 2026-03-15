@@ -22,7 +22,7 @@
         --border: #ccc;
         --border-light: #eee;
         --green: #276d3d;
-        --accent-solid: #2c5282;
+        --accent-bg: #2c5282;
       }
 
       @media (prefers-color-scheme: dark) {
@@ -37,7 +37,7 @@
           --border: #444;
           --border-light: #333;
           --green: #6ec98b;
-          --accent-solid: #3b6ba5;
+          --accent-bg: #3b6ba5;
         }
       }
 
@@ -60,6 +60,10 @@
         min-height: 100vh;
         display: flex;
         flex-direction: column;
+      }
+      h1,
+      h2 {
+        font-weight: 400;
       }
       a {
         color: var(--accent);
@@ -89,6 +93,9 @@
         flex-wrap: wrap;
         gap: var(--cluster-gap, 1rem);
         align-items: center;
+      }
+      .flow > * + * {
+        margin-top: var(--flow-space, 1rem);
       }
 
       /* === Utilities === */
@@ -163,7 +170,7 @@
         flex: 1;
         font-family: inherit;
         font-size: 1rem;
-        padding: 0.5rem 0.5rem;
+        padding: 0.5rem;
         border: none;
         background: none;
         color: var(--text);
@@ -194,7 +201,6 @@
       .hero h1 {
         font-size: 2.5rem;
         margin-bottom: 0.25rem;
-        font-weight: 400;
         letter-spacing: 0.05em;
       }
       .hero .tagline {
@@ -208,7 +214,6 @@
 
       .results-header h1 {
         font-size: 1.8rem;
-        font-weight: 400;
       }
 
       .quick-def {
@@ -221,28 +226,21 @@
 
       .subheadword {
         font-size: 1.4rem;
-        font-weight: 400;
         margin-top: 2rem;
         margin-bottom: 0.75rem;
       }
 
       .pos-group {
+        --flow-space: 0.75rem;
         margin-bottom: 1.5rem;
       }
 
       .sense {
-        margin-bottom: 1rem;
-      }
-      .sense-header {
-        margin-bottom: 0.25rem;
+        --flow-space: 0.25rem;
       }
       .translation {
         display: flex;
         gap: 0.25ch;
-        margin-bottom: 0.25rem;
-      }
-      .example {
-        margin-bottom: 0.5rem;
       }
 
       .examples-section {
@@ -252,8 +250,6 @@
       }
       .examples-section h2 {
         font-size: 1.3rem;
-        font-weight: 400;
-        margin-bottom: 1rem;
       }
 
       .corpus-example {
@@ -265,7 +261,8 @@
       }
       .corpus-example em {
         font-style: normal;
-        font-weight: 600;
+        font-weight: bold;
+        color: var(--green);
       }
       @media (max-width: 500px) {
         .corpus-example {
@@ -276,7 +273,6 @@
 
       .filter-tags {
         --cluster-gap: 0.4rem;
-        margin-bottom: 1rem;
       }
 
       .filter-tag {
@@ -308,15 +304,14 @@
 
       .error-message {
         padding: 1rem 0;
-        margin-bottom: 1.5rem;
       }
 
       /* === Exceptions === */
 
       .filter-tag[data-state="active"] {
-        background: var(--accent-solid);
+        background: var(--accent-bg);
         color: #fff;
-        border-color: var(--accent-solid);
+        border-color: var(--accent-bg);
       }
     </style>
   </head>
