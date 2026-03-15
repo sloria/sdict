@@ -235,7 +235,7 @@ pub fn build_router(state: AppState) -> Router {
         // Security headers
         .layer(SetResponseHeaderLayer::overriding(
             axum::http::header::CONTENT_SECURITY_POLICY,
-            HeaderValue::from_static("default-src 'self'; style-src 'unsafe-inline' 'self'"),
+            HeaderValue::from_static("default-src 'self'; style-src 'unsafe-inline' 'self'; script-src 'unsafe-inline' 'self'"),
         ))
         .layer(SetResponseHeaderLayer::overriding(
             axum::http::header::REFERRER_POLICY,
