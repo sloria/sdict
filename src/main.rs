@@ -5,6 +5,7 @@ use tracing_subscriber::EnvFilter;
 use tracing_subscriber::prelude::*;
 
 const SPANISHDICT_BASE_URL: &str = "https://www.spanishdict.com";
+const SUGGEST_BASE_URL: &str = "https://suggest1.spanishdict.com";
 
 #[tokio::main]
 async fn main() {
@@ -40,6 +41,7 @@ async fn main() {
     let state = AppState {
         client: Client::new(),
         base_url: SPANISHDICT_BASE_URL.to_string(),
+        suggest_url: SUGGEST_BASE_URL.to_string(),
     };
 
     let app = build_router(state);

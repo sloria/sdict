@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "esbuild static/main.js --minify --outfile=dist/main.min.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0"
+  }
+}

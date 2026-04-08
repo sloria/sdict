@@ -150,7 +150,40 @@
 
       /* === Blocks === */
 
+      .search-form:has(.suggestions:not([hidden])) {
+        border-radius: 4px 4px 0 0;
+      }
+
+      .suggestions {
+        text-align: left;
+        position: absolute;
+        left: -1px;
+        right: -1px;
+        top: calc(100% + 1px);
+        list-style: none;
+        background: var(--bg-input);
+        border: 1px solid var(--border);
+        border-top: none;
+        border-radius: 0 0 4px 4px;
+        z-index: 10;
+        overflow: hidden;
+      }
+      .suggestions li {
+        padding: 0.25rem 0.5rem 0.25rem calc(0.75rem + 20px + 0.5rem);
+        cursor: pointer;
+        font-size: 1rem;
+      }
+      .suggestions li[data-active] {
+        background: var(--accent-light);
+      }
+      @media (hover: hover) {
+        .suggestions li:hover {
+          background: var(--accent-light);
+        }
+      }
+
       .search-form {
+        position: relative;
         margin-bottom: 1rem;
         border: 1px solid var(--border);
         border-radius: 4px;
@@ -320,26 +353,6 @@
     <footer>
       Powered by <a href="https://www.spanishdict.com">SpanishDict</a>
     </footer>
-    <script>
-      document.querySelectorAll(".search-form").forEach((form) => {
-        const input = form.querySelector('input[name="term"]');
-        const clear = form.querySelector(".clear");
-        if (!input || !clear) return;
-        function toggle() {
-          if (input.value) {
-            clear.removeAttribute("hidden");
-          } else {
-            clear.setAttribute("hidden", "");
-          }
-        }
-        toggle();
-        input.addEventListener("input", toggle);
-        clear.addEventListener("click", () => {
-          input.value = "";
-          toggle();
-          input.focus();
-        });
-      });
-    </script>
+    <script src="/dist/main.min.js"></script>
   </body>
 </html>

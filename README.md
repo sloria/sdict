@@ -10,7 +10,7 @@
 
 # sdict
 
-A clutter-free frontend for [SpanishDict](https://www.spanishdict.com/). No ads, no trackers, no JS. Just the dictionary.
+A clutter-free frontend for [SpanishDict](https://www.spanishdict.com/). No ads, no trackers. Just the dictionary.
 
 <table>
   <tr>
