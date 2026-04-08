@@ -14,7 +14,7 @@ use axum::{
 };
 use http_body_util::BodyExt;
 use reqwest::Client;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
@@ -23,6 +23,7 @@ use tower_http::trace::TraceLayer;
 pub struct AppState {
     pub client: Client,
     pub base_url: String,
+    pub suggest_url: String,
 }
 
 const MAX_TERM_LENGTH: usize = 100;
@@ -87,6 +88,16 @@ pub struct TranslateQuery {
     pub filter: Option<String>,
     #[serde(rename = "langFrom")]
     pub lang_from: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct SuggestQuery {
+    q: String,
+}
+
+#[derive(Default, Deserialize, Serialize)]
+struct SuggestResponse {
+    results: Vec<String>,
 }
 
 // --- Handlers ---
@@ -192,6 +203,30 @@ async fn translate(
     }
 }
 
+async fn suggest(
+    State(state): State<AppState>,
+    Query(query): Query<SuggestQuery>,
+) -> impl IntoResponse {
+    let q = query.q.trim();
+    if q.is_empty() || q.len() > MAX_TERM_LENGTH {
+        return axum::Json(SuggestResponse::default()).into_response();
+    }
+    let url = format!(
+        "{}/dictionary/translate_es_suggest?q={}&v=0",
+        state.suggest_url,
+        urlencoding::encode(q)
+    );
+    let response = match state.client.get(&url).send().await {
+        Ok(resp) => resp.json::<SuggestResponse>().await.unwrap_or_default(),
+        Err(_) => SuggestResponse::default(),
+    };
+    (
+        [(header::CACHE_CONTROL, "public, max-age=3600")],
+        axum::Json(response),
+    )
+        .into_response()
+}
+
 // --- Middleware ---
 
 /// Middleware to minify HTML responses with minify-html
@@ -229,13 +264,17 @@ pub fn build_router(state: AppState) -> Router {
             post(search).layer(DefaultBodyLimit::max(1024)),
         )
         .route("/translate/{term}", get(translate))
+        .route("/api/suggest", get(suggest))
         .fallback(get(not_found))
         .nest_service("/static", ServeDir::new("static"))
+        .nest_service("/dist", ServeDir::new("dist"))
         .layer(middleware::map_response(minify_response))
         // Security headers
         .layer(SetResponseHeaderLayer::overriding(
             axum::http::header::CONTENT_SECURITY_POLICY,
-            HeaderValue::from_static("default-src 'self'; style-src 'unsafe-inline' 'self'; script-src 'unsafe-inline' 'self'"),
+            HeaderValue::from_static(
+                "default-src 'self'; style-src 'unsafe-inline' 'self'; script-src 'self'",
+            ),
         ))
         .layer(SetResponseHeaderLayer::overriding(
             axum::http::header::REFERRER_POLICY,

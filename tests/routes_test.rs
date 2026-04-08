@@ -12,17 +12,18 @@ fn load_fixture(name: &str) -> String {
     std::fs::read_to_string(format!("tests/fixtures/{name}")).expect("fixture file should exist")
 }
 
-fn app(base_url: &str) -> axum::Router {
+fn app(base_url: &str, suggest_url: &str) -> axum::Router {
     let state = AppState {
         client: Client::new(),
         base_url: base_url.to_string(),
+        suggest_url: suggest_url.to_string(),
     };
     build_router(state)
 }
 
 #[tokio::test]
 async fn test_home_page() {
-    let response = app("http://localhost")
+    let response = app("http://localhost", "http://localhost")
         .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
         .await
         .unwrap();
@@ -39,7 +40,7 @@ async fn test_home_page() {
 
 #[tokio::test]
 async fn test_search_redirect() {
-    let response = app("http://localhost")
+    let response = app("http://localhost", "http://localhost")
         .oneshot(
             Request::builder()
                 .method(Method::POST)
@@ -65,7 +66,7 @@ async fn test_search_redirect() {
 
 #[tokio::test]
 async fn test_search_empty_redirects_home() {
-    let response = app("http://localhost")
+    let response = app("http://localhost", "http://localhost")
         .oneshot(
             Request::builder()
                 .method(Method::POST)
@@ -91,7 +92,7 @@ async fn test_search_empty_redirects_home() {
 
 #[tokio::test]
 async fn test_search_encodes_spaces() {
-    let response = app("http://localhost")
+    let response = app("http://localhost", "http://localhost")
         .oneshot(
             Request::builder()
                 .method(Method::POST)
@@ -131,7 +132,7 @@ async fn test_translate_success() {
         .mount(&mock_server)
         .await;
 
-    let response = app(&mock_server.uri())
+    let response = app(&mock_server.uri(), "http://localhost")
         .oneshot(
             Request::builder()
                 .uri("/translate/comer")
@@ -178,7 +179,7 @@ async fn test_translate_with_lang_from() {
         .mount(&mock_server)
         .await;
 
-    let response = app(&mock_server.uri())
+    let response = app(&mock_server.uri(), "http://localhost")
         .oneshot(
             Request::builder()
                 .uri("/translate/comer?langFrom=en")
@@ -214,7 +215,7 @@ async fn test_translate_with_filter() {
         .mount(&mock_server)
         .await;
 
-    let response = app(&mock_server.uri())
+    let response = app(&mock_server.uri(), "http://localhost")
         .oneshot(
             Request::builder()
                 .uri("/translate/comer?filter=eat")
@@ -245,7 +246,7 @@ async fn test_translate_not_found() {
         .mount(&mock_server)
         .await;
 
-    let response = app(&mock_server.uri())
+    let response = app(&mock_server.uri(), "http://localhost")
         .oneshot(
             Request::builder()
                 .uri("/translate/xyznotaword")
@@ -273,7 +274,7 @@ async fn test_translate_fetch_error() {
         .mount(&mock_server)
         .await;
 
-    let response = app(&mock_server.uri())
+    let response = app(&mock_server.uri(), "http://localhost")
         .oneshot(
             Request::builder()
                 .uri("/translate/broken")
@@ -294,7 +295,7 @@ async fn test_translate_fetch_error() {
 #[tokio::test]
 async fn test_translate_rejects_too_long_term() {
     let long_term = "a".repeat(101);
-    let response = app("http://localhost")
+    let response = app("http://localhost", "http://localhost")
         .oneshot(
             Request::builder()
                 .uri(format!("/translate/{long_term}"))
@@ -331,7 +332,7 @@ async fn test_translate_accepts_max_length_term() {
         .mount(&mock_server)
         .await;
 
-    let response = app(&mock_server.uri())
+    let response = app(&mock_server.uri(), "http://localhost")
         .oneshot(
             Request::builder()
                 .uri(format!("/translate/{term}"))
@@ -345,8 +346,89 @@ async fn test_translate_accepts_max_length_term() {
 }
 
 #[tokio::test]
+async fn test_suggest_success() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/dictionary/translate_es_suggest"))
+        .and(query_param("q", "ho"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "results": ["hola", "how are you", "how", "however", "hoy"]
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let response = app("http://localhost", &mock_server.uri())
+        .oneshot(
+            Request::builder()
+                .uri("/api/suggest?q=ho")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let results = json["results"].as_array().unwrap();
+    assert_eq!(results.len(), 5);
+    assert_eq!(results[0], "hola");
+}
+
+#[tokio::test]
+async fn test_suggest_empty_query() {
+    let response = app("http://localhost", "http://localhost")
+        .oneshot(
+            Request::builder()
+                .uri("/api/suggest?q=")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert!(json["results"].as_array().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn test_suggest_upstream_failure() {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/dictionary/translate_es_suggest"))
+        .respond_with(ResponseTemplate::new(500))
+        .mount(&mock_server)
+        .await;
+
+    let response = app("http://localhost", &mock_server.uri())
+        .oneshot(
+            Request::builder()
+                .uri("/api/suggest?q=test")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert!(json["results"].as_array().unwrap().is_empty());
+}
+
+#[tokio::test]
 async fn test_not_found() {
-    let response = app("http://localhost")
+    let response = app("http://localhost", "http://localhost")
         .oneshot(
             Request::builder()
                 .uri("/nonexistent")

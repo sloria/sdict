@@ -4,4 +4,4 @@ prek = "latest"
 
 [tasks.start]
 description = "Run dev server with auto-reload"
-run = "cargo watch -x run"
+run = "cargo watch -s 'npm run build && cargo run'"

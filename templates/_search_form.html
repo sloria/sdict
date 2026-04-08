@@ -11,6 +11,10 @@
     {% if !search.value.is_empty() %}value="{{ search.value }}"{% endif %}
     placeholder="Spanish or English…"
     aria-label="Search for a Spanish or English word"
+    role="combobox"
+    aria-autocomplete="list"
+    aria-expanded="false"
+    autocomplete="off"
     {% if search.autofocus %}autofocus{% endif %}
   />
 
@@ -22,4 +26,6 @@
   </button>
 
   <button type="submit" class="sr-only" aria-label="Search" tabindex="-1">Search</button>
+
+  <ul class="suggestions" role="listbox" hidden></ul>
 </form>

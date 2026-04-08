@@ -10,6 +10,14 @@ COPY src ./src
 COPY templates ./templates
 RUN cargo chef prepare --recipe-path recipe.json
 
+# Minify JavaScript
+FROM node:alpine AS js
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY static/main.js static/main.js
+RUN npm run build
+
 # Build dependencies first (cached), then build the app
 FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
@@ -23,6 +31,7 @@ RUN cargo build --release
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=builder /app/target/release/sdict /usr/local/bin/sdict
 COPY static /app/static
+COPY --from=js /app/dist /app/dist
 WORKDIR /app
 ENV PORT=3000
 EXPOSE 3000
