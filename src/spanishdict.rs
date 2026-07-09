@@ -188,7 +188,7 @@ pub fn extract_filter_tags(examples: &[CorpusExample]) -> Vec<FilterTag> {
         .into_iter()
         .map(|(label, count)| FilterTag { label, count })
         .collect();
-    tags.sort_by(|a, b| b.count.cmp(&a.count));
+    tags.sort_by_key(|b| std::cmp::Reverse(b.count));
     tags.truncate(5);
     tags
 }
