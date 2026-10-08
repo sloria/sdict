@@ -6,12 +6,12 @@
 {% if term.has_both_langs %}
 <div class="cluster text-s">
   {% if term.lang_from == "en" %}
-    <span class="font-semibold">English to Spanish</span>
+    <span class="font-bold">English to Spanish</span>
   {% else %}
     <a href="/translate/{{ term.query|urlencode }}?langFrom=en">English to Spanish</a>
   {% endif %}
   {% if term.lang_from == "es" %}
-    <span class="font-semibold">Spanish to English</span>
+    <span class="font-bold">Spanish to English</span>
   {% else %}
     <a href="/translate/{{ term.query|urlencode }}?langFrom=es">Spanish to English</a>
   {% endif %}
@@ -22,20 +22,23 @@
   <h1>{{ term.headword }}</h1>
 </div>
 
-{% for qd in term.quick_definitions %}
-<p class="quick-def color-secondary"><a href="/translate/{{ qd|urlencode }}">{{ qd }}</a></p>
-{% endfor %} {% for hw in term.headword_groups %}
+{% if !term.quick_definitions.is_empty() %}
+<p class="quick-defs">
+  {% for qd in term.quick_definitions %}<span class="quick-def"><a href="/translate/{{ qd|urlencode }}">{{ qd }}</a></span>{% endfor %}
+</p>
+{% endif %}
+{% for hw in term.headword_groups %}
 {% if term.headword_groups.len() > 1 %}
 <h2 class="subheadword">{{ hw.subheadword }}</h2>
 {% endif %}
 {% for pg in hw.pos_groups %}
 <div class="pos-group flow">
-  <div class="uppercase-label color-faint">{{ pg.pos_label }}</div>
+  <div class="pos-label">{{ pg.pos_label }}</div>
   {% for sense in pg.senses %}
   <div class="sense flow">
     <div class="sense-header">
-      <span class="font-semibold">{{ sense.index }}.</span>
-      <span class="color-green"> 
+      <span class="font-bold">{{ sense.index }}.</span>
+      <span class="color-green">
         {% if !sense.context.is_empty() %}
         <span >({{ sense.context }})</span>
         {% endif %}
@@ -48,7 +51,7 @@
       </span>
     </div>
     {% for tr in sense.translations %}
-    <div class="translation indent font-semibold">
+    <div class="translation indent font-bold">
       {% if sense.translations.len() > 1 %}
       <span class="color-secondary font-normal">{{ loop.index0|index_to_letter }}.</span>
       {% endif %}
